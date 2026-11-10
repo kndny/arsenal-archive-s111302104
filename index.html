@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>槍械檔案館 Arsenal Archive</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="images/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="images/favicon-180.png">
+  <meta name="theme-color" content="#17303F">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@700&family=Doto:wght@400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/template.css">
+</head>
+<body>
+
+  <!-- 頁首：data-route 讓 JS 知道目前在哪一頁，並標示導覽列 -->
+  <header class="site-header">
+    <a class="brand" href="#/"><span class="logo" id="logo" aria-hidden="true"></span>槍械檔案館</a>
+    <div class="site-search" role="search">
+      <input id="site-q" type="search" placeholder="搜尋槍名、國家、口徑　按 / 開始" aria-label="搜尋全站的槍" autocomplete="off" aria-controls="search-results" aria-expanded="false">
+      <ul id="search-results" role="listbox" hidden></ul>
+    </div>
+    <nav aria-label="主選單">
+      <a href="#/" data-route="home">首頁</a>
+      <a href="#/catalog" data-route="catalog">槍種圖鑑</a>
+      <a href="#/table" data-route="table">篩選比較表</a>
+      <a href="#/calibers" data-route="calibers">口徑對照</a>
+      <a href="#/games" data-route="games">遊戲</a>
+      <a href="#/favorites" data-route="favorites">收藏<span class="badge" id="fav-count" hidden></span></a>
+    </nav>
+  </header>
+
+  <main>
+
+    <!-- 畫面一：首頁 -->
+    <section class="view" id="view-home">
+      <div class="hero">
+        <div class="hero-top">
+          <p class="wordmark" aria-hidden="true">ARSENAL<br>ARCHIVE</p>
+          <ul class="stats" aria-label="收錄數量">
+            <li><span class="num" id="stat-guns">12</span>槍枝</li>
+            <li><span class="num" id="stat-types">06</span>槍種</li>
+          </ul>
+        </div>
+        <button class="hero-art" id="hero-art" type="button" aria-label="切換槍種圖示"><span class="hero-art-gun" id="hero-art-gun"></span><span class="hero-art-label" id="hero-art-label"></span></button>
+        <h1>槍械檔案館</h1>
+        <p>整理六大槍種的經典槍械，可依槍種、國家或口徑瀏覽與比較。</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#/catalog">瀏覽槍種圖鑑</a>
+          <a class="btn" href="#/table">篩選比較表</a>
+          <button class="btn" id="random-gun" type="button">隨機看一把</button>
+        </div>
+      </div>
+      <!-- 點陣跑馬燈：文字由 main.js 填入 -->
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee-track"><span id="marquee-a"></span><span id="marquee-b"></span></div>
+      </div>
+
+      <!-- 快速入口（內容由 main.js 產生） -->
+      <div class="home-section">
+        <h2>從這裡開始</h2>
+        <ul class="index-list" id="quick-tiles"></ul>
+      </div>
+
+      <!-- 世界地圖（內容由 main.js 產生） -->
+      <div class="home-section">
+        <h2>世界地圖</h2>
+        <p class="map-hint">亮起的點是此網站有收錄槍枝的國家，點一下即可查看該國家的槍。</p>
+        <div class="world-map" id="world-map"></div>
+        <div class="map-time">
+          <button class="map-chip" id="map-play" type="button">播放</button>
+          <label class="map-time-label" for="map-year">年份</label>
+          <input id="map-year" type="range" min="1870" max="2026" step="1" value="2026">
+          <output id="map-year-out" for="map-year">全部</output>
+          <button class="map-chip" id="map-all" type="button">顯示全部</button>
+          <p class="map-time-info" id="map-year-info"></p>
+        </div>
+        <details class="map-countries">
+          <summary id="map-chips-title">國家列表</summary>
+          <div class="map-chips" id="map-chips"></div>
+        </details>
+        <div class="map-panel" id="map-panel" aria-live="polite"></div>
+      </div>
+
+      <!-- 槍械簡史（內容由 main.js 產生） -->
+      <div class="timeline-section">
+        <div class="timeline-head">
+          <h2>槍械簡史</h2>
+          <div class="timeline-nav">
+            <button class="pixel-btn" id="tl-prev" type="button" aria-label="往前看"></button>
+            <button class="pixel-btn" id="tl-next" type="button" aria-label="往後看"></button>
+          </div>
+        </div>
+        <div class="timeline-viewport" id="timeline-viewport" tabindex="0" aria-label="槍械簡史，可左右捲動">
+          <ol class="timeline" id="timeline"></ol>
+        </div>
+      </div>
+      <!-- 術語說明（內容由 main.js 產生） -->
+      <div class="home-section">
+        <h2>術語說明</h2>
+        <div class="terms" id="terms"></div>
+      </div>
+
+      <!-- 資料統計（內容由 main.js 產生） -->
+      <div class="home-section">
+        <h2>資料統計</h2>
+        <div class="stats-row" id="facts"></div>
+      </div>
+
+      <!-- 網站介紹 -->
+      <div class="intro">
+        <h2>關於這個網站</h2>
+        <p class="lead">身在台灣，我們很少有機會接觸真實的槍械。這個網站整理了各種經典槍械的資訊，希望讓對槍械有興趣的人，更容易看懂它們的差異與特色。</p>
+      </div>
+
+    </section>
+
+    <!-- 畫面二：槍種圖鑑（內容由 main.js 自動產生） -->
+    <section class="view" id="view-catalog" hidden>
+      <div class="page-title">
+        <h1>槍種圖鑑</h1>
+      </div>
+      <ul class="index-list" id="catalog-tiles"></ul>
+    </section>
+
+    <!-- 畫面三：篩選比較表 -->
+    <section class="view" id="view-table" hidden>
+      <div class="page-title">
+        <h1>篩選比較表</h1>
+      </div>
+      <div class="filters" role="search">
+        <label>槍種<select id="f-type"></select></label>
+        <label>地區<select id="f-region"></select></label>
+        <label>國家<select id="f-country"></select></label>
+        <label>年代<select id="f-era"></select></label>
+        <label>名稱<input id="f-q" type="search" placeholder="例如 AK"></label>
+        <button class="btn" id="f-reset" type="button">清除篩選</button>
+      </div>
+      <p id="count" aria-live="polite"></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>比較</th><th>名稱</th><th>槍種</th><th>國家</th><th>年份</th><th>口徑</th><th>作動方式</th></tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+      <p id="empty" hidden>沒有符合條件的槍枝，請放寬篩選條件，或按「清除篩選」。</p>
+    </section>
+
+    <!-- 畫面四：單一槍枝詳細（內容由 main.js 依網址自動產生） -->
+    <section class="view" id="view-gun" hidden>
+      <div id="gun-detail"></div>
+    </section>
+
+    <!-- 畫面五：單一槍種（內容由 main.js 依網址自動產生） -->
+    <section class="view" id="view-type" hidden>
+      <div id="type-page"></div>
+    </section>
+
+    <!-- 畫面六：遊戲首頁（內容由 main.js 產生） -->
+    <section class="view" id="view-games" hidden>
+      <div class="page-title">
+        <h1>遊戲</h1>
+        <p>親手體驗槍械的手感吧。</p>
+      </div>
+      <ul class="index-list" id="game-tiles"></ul>
+    </section>
+
+    <!-- 畫面八：靶場 -->
+    <section class="view" id="view-range" hidden>
+      <div class="page-title">
+        <h1>試射場</h1>
+        <p class="touch-note">偵測到您使用觸控螢幕。遊戲可以正常遊玩，搭配鍵盤與滑鼠體驗更佳。</p>
+        <a class="back-link" href="#/games">回到遊戲</a>
+      </div>
+      <div id="range-app"></div>
+    </section>
+
+    <!-- 畫面十二：口徑對照 -->
+    <section class="view" id="view-calibers" hidden>
+      <div class="page-title">
+        <h1>口徑對照</h1>
+      </div>
+      <div id="caliber-body"></div>
+    </section>
+
+    <!-- 畫面十：我的檔案夾 -->
+    <section class="view" id="view-favorites" hidden>
+      <div class="page-title">
+        <h1>我的檔案夾</h1>
+        <p>收藏的槍械存在這個瀏覽器裡，更換裝置或清除瀏覽資料後就會消失。</p>
+      </div>
+      <div id="fav-list"></div>
+    </section>
+
+    <!-- 畫面十一：並排比較 -->
+    <section class="view" id="view-compare" hidden>
+      <div class="page-title">
+        <h1>並排比較</h1>
+      </div>
+      <div id="compare-body"></div>
+    </section>
+
+    <!-- 畫面九：防線 -->
+    <section class="view" id="view-defense" hidden>
+      <div class="page-title">
+        <h1>防線</h1>
+        <p>在實戰中體驗槍械性能與配件的影響吧。</p>
+        <p class="touch-note">偵測到您使用觸控螢幕。遊戲可以正常遊玩，搭配鍵盤與滑鼠體驗更佳。</p>
+        <a class="back-link" href="#/games">回到遊戲</a>
+      </div>
+      <div id="defense-app"></div>
+    </section>
+
+  </main>
+
+  <div class="compare-tray" id="compare-tray" hidden>
+    <span class="compare-tray-title">比較</span>
+    <ul id="compare-chips"></ul>
+    <a class="btn btn-primary" id="compare-go" href="#/compare">開始比較</a>
+    <button class="btn" id="compare-clear" type="button">清空</button>
+  </div>
+
+  <footer class="site-footer">
+    <p>資料來源：公開的歷史與規格資料。本站為課堂作業，非商業用途。圖片皆取自網路，僅供學習展示，版權屬原作者所有。如有疑慮，將立即移除。</p>
+  </footer>
+
+  <script src="js/gunextra.js"></script>
+  <script src="js/calibers.js"></script>
+  <script src="js/defense.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
