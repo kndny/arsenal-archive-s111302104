@@ -10,6 +10,8 @@
   --font-title: "Noto Serif TC", "Songti TC", serif;
   --font-dot: "Doto", "Courier New", monospace;   /* 點陣字型：只用在英文、數字與代號 */
   --dot: rgba(23, 48, 63, 0.4);
+  --on-signal: #17303F;  /* 黃色底上的文字固定用墨藍 */
+  --tint: rgba(23, 48, 63, 0.08);
   --dot-light: rgba(237, 240, 238, 0.22);   /* 深色底上的點陣 */   /* 點陣的顏色，是墨藍的淡色 */
   --font-body: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
 
@@ -227,6 +229,9 @@ main, .site-footer {
   font-family: var(--font-body);
   font-size: var(--fs-body);
 }
+/* 四個下拉選單固定同寬，國家選單不會因為選項長短（例如「台灣（中華民國）」）變寬變窄 */
+.filters select, .filters input { width: 11.5rem; min-width: 0; }
+.filters select:disabled { opacity: 0.45; cursor: not-allowed; }
 .filters select:focus-visible, .filters input:focus-visible { outline: 3px solid var(--signal); outline-offset: 2px; }
 #count { margin: 0.5rem 0; font-weight: 700; }
 .table-wrap { overflow-x: auto; margin-bottom: 1rem; }
@@ -234,7 +239,7 @@ table { width: 100%; border-collapse: collapse; }
 th, td { padding: 0.75rem 0.75rem 0.75rem 0; text-align: left; vertical-align: top; }
 th { border-bottom: 2px solid var(--ink); white-space: nowrap; }
 td { border-bottom: 1px solid var(--line); }
-tbody tr:hover { background: rgba(23, 48, 63, 0.08); }
+tbody tr:hover { background: var(--tint); }
 td:first-child a { font-weight: 700; }
 #empty { padding: 1rem 0 2rem; }
 
@@ -355,9 +360,8 @@ td { border-bottom: 2px dotted var(--dot); }
 .view:not([hidden]) { animation: view-in 0.35s ease-out; }
 
 /* 使用者在系統設定要求減少動態時，關閉轉場 */
-@media (prefers-reduced-motion: reduce) {
-  .view:not([hidden]) { animation: none; }
-}
+/* 動態效果關閉時 */
+:root[data-motion="off"] .view:not([hidden]) { animation: none; }
 
 /* 詳細頁的外部連結按鈕 */
 .detail-text .btn { margin-top: 0.75rem; }
@@ -471,11 +475,10 @@ td { border-bottom: 2px dotted var(--dot); }
 .index-list a:hover .icon rect { fill: var(--signal); transition-delay: calc(var(--i) * 45ms); }
 
 /* 使用者設定「減少動態」時，關閉所有動畫 */
-@media (prefers-reduced-motion: reduce) {
-  .logo rect:last-child, .hero-art rect, .marquee-track { animation: none; }
-  .index-list li, .index-list .icon rect { transition: none; }
-  .index-list li:hover { transform: none; }
-}
+/* 動態效果關閉時 */
+:root[data-motion="off"] .logo rect:last-child, :root[data-motion="off"] .hero-art rect, :root[data-motion="off"] .marquee-track { animation: none; }
+:root[data-motion="off"] .index-list li, :root[data-motion="off"] .index-list .icon rect { transition: none; }
+:root[data-motion="off"] .index-list li:hover { transform: none; }
 
 
 /* ===== 槍械簡史：電腦版改成橫向，每個節點自己帶一段點線，空間不夠時會自動換行 ===== */
@@ -550,7 +553,8 @@ html.has-reticle input:not([type="range"]), html.has-reticle textarea { cursor: 
 .reticle.is-lock .normal { display: none; }
 .reticle.is-lock .lock { display: block; }
 .reticle rect:last-child { fill: var(--signal); animation: blink 1s steps(1) infinite; }
-@media (prefers-reduced-motion: reduce) { .reticle rect:last-child { animation: none; } }
+/* 動態效果關閉時 */
+:root[data-motion="off"] .reticle rect:last-child { animation: none; }
 
 /* ===== 捲到才浮現：由 main.js 加上 reveal 標記，進入畫面時加上 in ===== */
 .reveal { opacity: 0; transform: translateY(24px); }
@@ -704,9 +708,8 @@ html.has-reticle input:not([type="range"]), html.has-reticle textarea { cursor: 
 .range-overlay h2 { margin: 0; font-family: var(--font-title); font-size: var(--fs-title); }
 .range-overlay p { margin: 0; }
 .range-overlay .btn { margin-top: 1rem; }
-@media (prefers-reduced-motion: reduce) {
-  .range-target, .range-pop { animation: none; }
-}
+/* 動態效果關閉時 */
+:root[data-motion="off"] .range-target, :root[data-motion="off"] .range-pop { animation: none; }
 
 
 /* ===== 靶場：武器、後座力與回饋 ===== */
@@ -742,10 +745,9 @@ html.has-reticle input:not([type="range"]), html.has-reticle textarea { cursor: 
 .range-spec { max-width: 36em; }
 .range-hint { margin: -2rem 0 3rem; max-width: 36em; }
 .range-bar .map-chip { align-self: center; }
-@media (prefers-reduced-motion: reduce) {
-  .range-flash.on, .range-hole { animation: none; }
-  .range-stage { transition: none; }
-}
+/* 動態效果關閉時 */
+:root[data-motion="off"] .range-flash.on, :root[data-motion="off"] .range-hole { animation: none; }
+:root[data-motion="off"] .range-stage { transition: none; }
 
 
 /* ===== 試射場 ===== */
@@ -1063,7 +1065,8 @@ html.has-reticle input:not([type="range"]), html.has-reticle textarea { cursor: 
   .def-part-row { grid-template-columns: 1fr; }
   .def-count { font-size: 5rem; }
 }
-@media (prefers-reduced-motion: reduce) { .range-field.is-hurt, .def-banner.on, .def-num { animation: none; } }
+/* 動態效果關閉時 */
+:root[data-motion="off"] .range-field.is-hurt, :root[data-motion="off"] .def-banner.on, :root[data-motion="off"] .def-num { animation: none; }
 .def-count.small { font-size: var(--fs-title); }
 .def-art { display: block; width: 100%; height: auto; border: 2px solid var(--ink); image-rendering: pixelated; }
 .def-card { padding-top: 2.1rem; }
@@ -1151,12 +1154,12 @@ body.has-tray { padding-bottom: 5.5rem; }
 .touch-note { display: none; padding: 0.4rem 0.75rem; border-left: 4px solid var(--signal); background: rgba(217, 196, 90, 0.2); }
 @media (pointer: coarse) { .touch-note { display: block; } }
 
-/* 首頁快速入口：四個一排，窄一點時兩個一排 */
-.home-section #quick-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); border-top: 0; }
+/* 首頁快速入口：五個一排，窄一點時兩個一排（最後一個佔滿整排） */
+.home-section #quick-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); border-top: 0; }
 .home-section #quick-tiles li { border: 1px solid var(--ink); }
 .home-section #quick-tiles a { height: 100%; }
-@media (max-width: 1000px) { .home-section #quick-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .home-section #quick-tiles { grid-template-columns: 1fr; } }
+@media (max-width: 1000px) { .home-section #quick-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } .home-section #quick-tiles li:last-child { grid-column: 1 / -1; } }
+@media (max-width: 560px) { .home-section #quick-tiles { grid-template-columns: 1fr; } .home-section #quick-tiles li:last-child { grid-column: auto; } }
 .home-section #quick-tiles .icon { display: flex; align-items: center; min-height: 4.5rem; }
 
 /* 槍枝詳細頁：試射數據與相關槍枝 */
@@ -1210,15 +1213,427 @@ a.map-chip { text-decoration: none; }
 
 /* 小螢幕與手機：介面依 --ui 縮小，全螢幕模式 */
 .range-field .range-hud, .range-field .def-hud, .range-field .def-score, .range-field .def-styles, .range-field .def-radar,
-.range-field .def-rbar, .range-field .def-banner, .range-field .def-cards, .range-field .def-panel, .range-field .range-touch, .range-field .range-lockcard { zoom: var(--ui, 1); }
-.range-touch-btn { width: 56px; height: 56px; }
-.range-touch-btn.fire { width: 72px; height: 72px; }
+.range-field .def-rbar, .range-field .def-banner, .range-field .def-cards, .range-field .def-panel, .range-field .range-lockcard { zoom: var(--ui, 1); }
 .range-full-btn { position: absolute; right: 0.6rem; top: 0.6rem; z-index: 8; padding: 0.25rem 0.7rem; border: 2px solid var(--ink); background: var(--paper); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
 .range-field.is-full { position: fixed !important; inset: 0; z-index: 300; width: 100vw !important; height: 100vh !important; height: 100dvh !important; max-height: none !important; aspect-ratio: auto !important; margin: 0 !important; border: 0; }
 body.no-scroll { overflow: hidden; }
 
-.range-field.has-touch .range-hud { bottom: calc(0.75rem + 84px); }
-.range-field.has-touch .range-full-btn { top: 3.4rem; right: 0.6rem; zoom: var(--ui, 1); }
 
 .fun-fact .fact-list { margin: 0.4rem 0 0; padding-left: 1.2rem; }
 .fun-fact .fact-list li { margin: 0.35rem 0; }
+
+/* ===== 手機操作：按鍵放大，位置參考一般槍戰手遊 ===== */
+.range-touch { position: absolute; inset: 0; right: 0; bottom: 0; z-index: 6; display: block; pointer-events: none; }
+.range-touch .range-touch-btn { position: absolute; pointer-events: auto; width: 76px; height: 76px; border: 3px solid var(--ink); border-radius: 50%; background: var(--paper); color: var(--ink); font: inherit; font-size: var(--fs-body); font-weight: 700; box-shadow: 3px 3px 0 var(--ink); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.range-touch .range-touch-btn:active { transform: translate(2px, 2px); box-shadow: none; background: var(--signal); }
+.range-touch .range-touch-btn.fire { width: 108px; height: 108px; font-size: var(--fs-sub); background: var(--signal); }
+.range-touch .range-touch-btn.fire:active { background: var(--ink); color: var(--paper); }
+.range-touch .fire.right { right: 1rem; bottom: 1rem; }
+.range-stick { position: absolute; left: 1.2rem; bottom: 1rem; width: 140px; height: 140px; border-radius: 50%; border: 3px solid var(--ink); background: rgba(237, 240, 238, 0.55); pointer-events: auto; touch-action: none; display: flex; align-items: center; justify-content: center; }
+.range-stick-knob { width: 64px; height: 64px; border-radius: 50%; background: var(--signal); border: 3px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); pointer-events: none; }
+.range-touch .ads { right: calc(1rem + 108px + 0.6rem); bottom: 1.2rem; }
+.range-touch .reload { right: 1.4rem; bottom: calc(1rem + 108px + 0.6rem); }
+.range-touch .swap { right: calc(1.4rem + 76px + 0.6rem); bottom: calc(1rem + 108px + 0.6rem); }
+.range-tools { position: absolute; right: 0.6rem; top: 0.6rem; z-index: 8; display: flex; gap: 0.6rem; zoom: var(--ui, 1); }
+.range-tools .range-full-btn { position: static; padding: 0.4rem 0.8rem; min-height: 44px; }
+.range-field.has-touch .range-hud { top: calc(0.6rem + 64px * var(--ui, 1)); bottom: auto; right: 0.6rem; }
+
+/* ===== 深色模式：同樣三個色相，只把墨藍與冷白對調，黃色不變 ===== */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --ink: #E3EAE6; --paper: #0E1B24; --line: rgba(227, 234, 230, 0.28); --dot: rgba(227, 234, 230, 0.4); --tint: rgba(227, 234, 230, 0.1); }
+}
+:root[data-theme="dark"] { --ink: #E3EAE6; --paper: #0E1B24; --line: rgba(227, 234, 230, 0.28); --dot: rgba(227, 234, 230, 0.4); --tint: rgba(227, 234, 230, 0.1); }
+/* 主視覺和試射場是「場景」，在深色模式下維持原本的配色 */
+:root[data-theme="dark"] .hero, :root[data-theme="dark"] .range-field, :root[data-theme="dark"] .range-overlay { --ink: #17303F; --paper: #EDF0EE; --line: rgba(23, 48, 63, 0.25); --dot: rgba(23, 48, 63, 0.4); --tint: rgba(23, 48, 63, 0.08); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .hero, :root:not([data-theme="light"]) .range-field, :root:not([data-theme="light"]) .range-overlay { --ink: #17303F; --paper: #EDF0EE; --line: rgba(23, 48, 63, 0.25); --dot: rgba(23, 48, 63, 0.4); --tint: rgba(23, 48, 63, 0.08); }
+}
+
+/* 深色模式：黃色底上的文字固定用墨藍，懸停時反白的組合也要換 */
+.btn-primary, .fav-btn.on:not(.btn), .fav-btn.btn.on, .cmp-btn.on, .badge, .compare-table td.best, .chip-x:hover, .range-board li.me { color: var(--on-signal); }
+.btn-primary:hover, .btn.on:hover, .fav-btn:not(.btn):hover { color: var(--paper); }
+.hero .btn-primary:hover { color: var(--signal); }
+:root[data-theme="dark"] .card img, :root[data-theme="dark"] .gun-photo img { filter: brightness(0.9); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .card img, :root:not([data-theme="light"]) .gun-photo img { filter: brightness(0.9); } }
+
+/* 深／淺色切換鈕 */
+.theme-toggle { padding: 0.25rem 0.75rem; border: 2px solid var(--ink); background: transparent; color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; min-height: 40px; }
+.theme-toggle:hover { background: var(--ink); color: var(--paper); }
+.theme-toggle:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* 圖片：載入前顯示骨架（會流動的淡色條），載完淡入；沒有照片時的預設圖多一行說明 */
+img.is-loading { background: linear-gradient(100deg, var(--line) 30%, var(--tint) 50%, var(--line) 70%) 0 0 / 300% 100%; animation: skeleton 1.4s linear infinite; }
+@keyframes skeleton { to { background-position: -300% 0; } }
+.card img, .gun-photo img { transition: opacity 0.35s ease-out; }
+.card img.is-loading, .gun-photo img.is-loading { opacity: 0.6; }
+.art { position: relative; flex-direction: column; gap: 0.5rem; }
+.art-note { font-size: var(--fs-body); font-weight: 700; opacity: 0.7; }
+
+/* 換頁過場：整頁淡入，卡片與詳細頁區塊依序浮現 */
+.view-enter { animation: view-in 0.35s ease-out both; }
+#view-range.view-enter, #view-defense.view-enter { animation-name: view-fade; }
+.view-enter .card-wrap, .view-enter #gun-detail > *, .view-enter .index-list li { animation: item-in 0.5s ease-out both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes view-in { from { opacity: 0; transform: translateY(10px); } }
+@keyframes view-fade { from { opacity: 0; } }
+@keyframes item-in { from { opacity: 0; transform: translateY(16px); } }
+/* 動態效果關閉時 */
+:root[data-motion="off"] .view-enter, :root[data-motion="off"] .view-enter .card-wrap, :root[data-motion="off"] .view-enter #gun-detail > *, :root[data-motion="off"] .view-enter .index-list li, :root[data-motion="off"] img.is-loading { animation: none; }
+
+/* 修正：按鈕預設文字色、試射場內文字色（場景維持原配色） */
+.btn { color: var(--ink); }
+.btn-primary, .fav-btn.btn.on, .cmp-btn.on { color: var(--on-signal); }
+:root[data-theme="dark"] .range-field, :root[data-theme="dark"] .range-overlay { color: #17303F; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .range-field, :root:not([data-theme="light"]) .range-overlay { color: #17303F; } }
+
+/* ===== 槍械詳細頁：檔案卡（左大圖、右資料） ===== */
+.dossier { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 2rem; align-items: start; padding: 2.5rem 0 1rem; }
+.dossier-photo { position: relative; margin: 0; }
+.dossier-photo img, .dossier-photo .art { width: 100%; aspect-ratio: 3 / 2; display: block; object-fit: cover; border: 2px solid var(--ink); }
+.dossier-photo::before, .dossier-photo::after { content: ""; position: absolute; width: 28px; height: 28px; z-index: 2; pointer-events: none; }
+.dossier-photo::before { left: -8px; top: -8px; border-left: 4px solid var(--signal); border-top: 4px solid var(--signal); }
+.dossier-photo::after { right: -8px; bottom: -8px; border-right: 4px solid var(--signal); border-bottom: 4px solid var(--signal); }
+.dossier-photo figcaption { margin-top: 0.5rem; }
+.dossier-card { position: relative; padding: 1.5rem; border: 2px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); background: var(--paper); }
+.dossier-no { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; margin: 0 0 0.75rem; font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.04em; }
+.dossier-no b { padding: 0 0.6rem; background: var(--signal); color: var(--on-signal); }
+.dossier-card h1 { margin: 0 0 1rem; font-family: var(--font-title); font-size: var(--fs-title); line-height: 1.25; overflow-wrap: anywhere; }
+.dossier-facts { display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.5rem 1rem; margin: 0; padding: 1rem 0; border-top: 2px dotted var(--ink); border-bottom: 2px dotted var(--ink); }
+.dossier-facts dt { font-weight: 700; }
+.dossier-facts dd { margin: 0; }
+.dossier-card .gun-actions { margin-top: 1.25rem; }
+@media (max-width: 860px) { .dossier { grid-template-columns: 1fr; gap: 1.75rem; } }
+
+/* ===== 世界地圖：地圖在左、國家的槍在右，點國家會放大 ===== */
+.map-stage { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); gap: 1.5rem; align-items: start; }
+.map-stage .world-map { border: 1px solid var(--line); overflow: hidden; }
+.map-stage .map-panel { margin-top: 0; max-height: 28rem; overflow-y: auto; }
+.world-map.is-zoomed { border-color: var(--ink); }
+.map-back { margin: 0 0 0.75rem; }
+.map-stage .map-guns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+.map-gun-card { display: block; min-height: 0; padding: 0.4rem; border: 1px solid var(--ink); text-decoration: none; font-weight: 400; }
+.map-gun-card img, .map-gun-card .art { width: 100%; aspect-ratio: 3 / 2; margin: 0 0 0.35rem; display: block; object-fit: cover; }
+.map-gun-card b { display: block; }
+.map-gun-card span { display: block; }
+.map-gun-card:hover { background: var(--ink); color: var(--paper); }
+@media (max-width: 860px) { .map-stage { grid-template-columns: 1fr; } .map-stage .map-panel { max-height: none; } }
+
+/* ===== 比較頁：能力雷達圖（三個色相以外的區分靠線型：實線、虛線、點線） ===== */
+.radar { margin: 1.5rem 0 2rem; max-width: 36rem; }
+.radar h2 { margin: 0 0 0.5rem; font-family: var(--font-title); font-size: var(--fs-sub); }
+.radar-svg { display: block; width: 100%; height: auto; font-size: var(--fs-body); }
+.radar-ring { fill: none; stroke: var(--line); stroke-width: 1; }
+.radar-axis { stroke: var(--line); stroke-width: 1; }
+.radar-label { fill: var(--ink); font-weight: 700; }
+.radar-shape { stroke-width: 3; stroke-linejoin: round; }
+.radar-shape.s0 { fill: var(--signal); fill-opacity: 0.55; stroke: var(--ink); }
+.radar-shape.s1 { fill: var(--ink); fill-opacity: 0.22; stroke: var(--ink); }
+.radar-shape.s2 { fill: none; stroke: var(--ink); }
+.radar-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.5rem; margin: 0.5rem 0 0; padding: 0; list-style: none; font-weight: 700; }
+.radar-legend li { display: inline-flex; align-items: center; gap: 0.5rem; }
+.radar-legend .sw { display: inline-block; width: 2.2rem; height: 0.9rem; border: 3px solid var(--ink); }
+.radar-legend .sw.s0 { background: var(--signal); }
+.radar-legend .sw.s1 { border-style: dashed; background: color-mix(in srgb, var(--ink) 25%, transparent); }
+.radar-legend .sw.s2 { border-style: dotted; background: transparent; }
+.map-guns a.map-gun-card { display: block; min-height: 0; align-items: initial; font-weight: 400; }
+.map-guns a.map-gun-card b { font-weight: 700; }
+
+/* ===== 點陣照片：展示窗固定是淺色底，圓點是墨藍；游標周圍會露出真實照片 ===== */
+.dm { position: relative; overflow: hidden; --mx: -999px; --my: -999px; aspect-ratio: 4 / 3; background-color: #E4E8E5; background-image: radial-gradient(rgba(23, 48, 63, 0.28) 1px, transparent 1.2px); background-size: 16px 16px; cursor: crosshair; touch-action: pan-y; }
+.dm img, .card .dm img { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 6%; box-sizing: border-box; aspect-ratio: auto; object-fit: contain; background: none; filter: none; }
+.dm .real { mix-blend-mode: multiply; -webkit-mask-image: radial-gradient(circle 80px at var(--mx) var(--my), #000 0, #000 55%, transparent 100%); mask-image: radial-gradient(circle 80px at var(--mx) var(--my), #000 0, #000 55%, transparent 100%); }
+.card .dm { margin-bottom: 1rem; border: 1px solid var(--ink); }
+.card:hover .dm { border-color: var(--paper); }
+
+/* ===== 互動特效（js/fx.js）===== */
+.fx-field { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; }
+.fx-over { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 900; pointer-events: none; }
+.hero-art { display: block; margin: 2rem 0; padding: 1rem 0 1.25rem; border-top: 2px dotted var(--dot-light); border-bottom: 2px dotted var(--dot-light); cursor: default; text-align: left; }
+.hero-dots { display: block; width: 100%; height: clamp(260px, 42vh, 420px); cursor: crosshair; touch-action: pan-y; }
+.hero-art-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem 1.5rem; margin-top: 0.75rem; }
+.hero-art-label { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; margin: 0; color: var(--paper); font-family: var(--font-dot); font-weight: 900; }
+.hero-art-label b { padding: 0 0.6rem; background: var(--signal); color: var(--on-signal); }
+.hero-art-label a { color: var(--paper); }
+@media (max-width: 640px) { .hero-dots { height: 220px; } }
+
+/* ===== 詳情頁照片：左右拖曳調圓點 ===== */
+.dossier-photo .dm { aspect-ratio: 3 / 2; border: 2px solid var(--ink); }
+.dossier-photo .dm img { border: 0; object-fit: contain; aspect-ratio: auto; }
+.dm.scrub .real { -webkit-mask-image: none; mask-image: none; }
+.dm.scrub .dots { transition: none; }
+.scrub-hint { position: absolute; left: 0; right: 0; bottom: 0.6rem; text-align: center; font-family: var(--font-dot); font-weight: 900; color: #17303F; opacity: 0.55; pointer-events: none; transition: opacity 0.3s; }
+
+/* ===== 口徑散布圖 ===== */
+.cal-scatter { position: relative; max-width: 760px; margin: 1.5rem 0 2rem; }
+.cal-scatter svg { display: block; width: 100%; height: auto; font-size: var(--fs-body); }
+.sc-grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 5; }
+.sc-tick { fill: var(--ink); opacity: 0.7; font-family: var(--font-dot); font-weight: 900; }
+.sc-axis { fill: var(--ink); font-weight: 700; }
+.sc-dot { fill: var(--signal); stroke: var(--ink); stroke-width: 2; cursor: pointer; transition: r 0.15s, fill 0.15s, opacity 0.2s; outline: none; }
+.sc-dot:hover, .sc-dot:focus-visible { fill: var(--ink); stroke: var(--signal); stroke-width: 3; }
+.sc-dot.dim { opacity: 0.15; cursor: default; pointer-events: none; }
+.cal-pop { position: absolute; z-index: 5; display: flex; flex-direction: column; min-width: 12rem; padding: 0.5rem 0.75rem; background: var(--paper); border: 2px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); pointer-events: none; transform: translate(14px, -110%); }
+.cal-pop.flip { transform: translate(calc(-100% - 14px), -110%); }
+.cal-pop b { font-family: var(--font-title); }
+.cal-row.flash { animation: cal-flash 1.4s ease-out; }
+@keyframes cal-flash { 0%, 40% { background: var(--signal); } 100% { background: transparent; } }
+
+/* ===== 詳細頁：左邊文字、右邊數據 ===== */
+.gun-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 3rem; align-items: start; margin-top: 1.5rem; }
+.gun-main.detail-text { max-width: none; }
+.gun-main.detail-text h2 { margin-top: 2rem; padding-top: 1.25rem; border-top: 2px dotted var(--ink); }
+.gun-main.detail-text h2:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+.gun-side { position: sticky; top: 1rem; display: flex; flex-direction: column; gap: 1.5rem; padding: 1.25rem; border: 2px solid var(--ink); }
+.gun-side .life, .gun-side .gun-stats { max-width: none; margin: 0; }
+.gun-side .gun-stats { padding-top: 1.25rem; border-top: 2px dotted var(--ink); }
+.gun-side .stat-row { grid-template-columns: 5.5rem 1fr; row-gap: 0.25rem; }
+.gun-side .stat-label { grid-column: 1; }
+.gun-side .stat-value { grid-column: 2; text-align: right; }
+.gun-side .rank-bar { grid-column: 1 / 3; }
+.gun-side .stat-rank { grid-column: 1 / 3; text-align: right; }
+.gun-more { padding: 2.5rem 0 2rem; margin-top: 2.5rem; border-top: 2px dotted var(--ink); }
+.gun-more > h2 { margin: 0 0 0.5rem; font-family: var(--font-title); font-size: var(--fs-sub); }
+.gun-pn { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 2rem 0 1.5rem; }
+.gun-pn-link { display: flex; flex-direction: column; gap: 0.25rem; padding: 1rem 1.25rem; border: 2px solid var(--ink); color: var(--ink); text-decoration: none; transition: background 0.15s, color 0.15s, transform 0.15s; }
+.gun-pn-link.next { text-align: right; }
+.gun-pn-link span { font-family: var(--font-dot); font-weight: 900; }
+.gun-pn-link b { font-family: var(--font-title); font-size: var(--fs-sub); }
+.gun-pn-link:hover, .gun-pn-link:focus-visible { background: var(--ink); color: var(--paper); transform: translateY(-2px); }
+@media (max-width: 960px) { .gun-body { grid-template-columns: 1fr; gap: 2rem; } .gun-side { position: static; } .gun-side .stat-row { grid-template-columns: 6rem 1fr; } }
+@media (max-width: 560px) { .gun-pn { grid-template-columns: 1fr; } .gun-pn-link.next { text-align: left; } }
+
+/* ===== 詳細頁數據欄：排名放在長條右邊 ===== */
+.gun-side .stat-row { grid-template-columns: 1fr auto; }
+.gun-side .stat-label { grid-column: 1; }
+.gun-side .stat-value { grid-column: 2; }
+.gun-side .rank-bar { grid-column: 1; }
+.gun-side .stat-rank { grid-column: 2; }
+
+/* ===== 開場讀取畫面 ===== */
+#boot { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; background: #17303F; background-image: radial-gradient(circle, rgba(237, 240, 238, 0.22) 1.5px, transparent 1.6px); background-size: 28px 28px; color: #EDF0EE; animation: boot-out 0.5s ease-in 1.9s forwards; }
+.no-boot #boot { display: none; }
+.boot-in { display: flex; flex-direction: column; gap: 1.5rem; padding: 2rem; background: #17303F; }
+.boot-word { margin: 0; font-family: var(--font-dot); font-size: var(--fs-title); font-weight: 900; line-height: 1.1; letter-spacing: 0.08em; }
+.boot-bar { display: grid; grid-template-columns: repeat(16, 1fr); gap: 6px; }
+.boot-bar i { aspect-ratio: 1; border-radius: 50%; border: 2px solid rgba(237, 240, 238, 0.5); animation: boot-dot 0.2s ease-out both; animation-delay: calc(0.25s + var(--i) * 0.08s); }
+.boot-label { margin: 0; font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.12em; opacity: 0.7; }
+@keyframes boot-dot { to { background: #D9C45A; border-color: #D9C45A; transform: scale(1.15); } }
+@keyframes boot-out { to { opacity: 0; visibility: hidden; } }
+/* 動態效果關閉時 */
+:root[data-motion="off"] #boot { display: none; }
+@media (max-width: 560px) { .boot-word { font-size: var(--fs-sub); } }
+
+/* ===== 卡片 hover：浮起，影子用訊號黃 ===== */
+.card, .term-card { transition: background 0.15s, color 0.15s, transform 0.15s, box-shadow 0.15s; }
+.card:hover, .card:focus-visible { --ty: -4px; box-shadow: 5px 5px 0 var(--signal); }
+.term-card:hover { background: var(--ink); color: var(--paper); transform: translateY(-4px); box-shadow: 5px 5px 0 var(--signal); }
+.term-card:hover .en { color: var(--signal); }
+.term-card h3, .term-card p { transition: color 0.15s; }
+/* 動態效果關閉時 */
+:root[data-motion="off"] .card:hover, :root[data-motion="off"] .term-card:hover { transform: none; }
+
+
+
+/* 表單元件統一字級，避免瀏覽器預設的 13.3px */
+button, input, select, textarea { font-size: inherit; }
+.cal-sort { flex-wrap: wrap; }
+.boot-in { max-width: 100vw; box-sizing: border-box; }
+
+/* 手機：提示框等絕對定位元素不要把頁面撐寬 */
+html, body { overflow-x: clip; }
+.term-hint::after { max-width: min(22rem, calc(100vw - 3rem)); }
+.dm.scrub { touch-action: pan-y; }
+
+/* ===== 詳細頁：檔案終端機風格（A）＋圓點長條（C） ===== */
+.file-status { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1.5rem; margin-bottom: 1.5rem; padding: 0.6rem 1rem; background: #17303F; color: #EDF0EE; font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.06em; }
+.file-status b { color: #D9C45A; }
+.dossier-facts { margin: 1rem 0; }
+.dossier-facts .field { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.35rem 0; }
+.dossier-facts .field > span:first-child { font-weight: 700; white-space: nowrap; }
+.dossier-facts .field i { flex: 1; min-width: 1rem; border-bottom: 2px dotted var(--ink); opacity: 0.5; transform: translateY(-4px); }
+.dossier-facts .field .val { text-align: right; }
+.scan { position: absolute; left: 0; right: 0; top: 0; height: 3px; background: #D9C45A; box-shadow: 0 0 14px #D9C45A; pointer-events: none; animation: scan 4.5s linear infinite; }
+@keyframes scan { from { top: 0; } to { top: 100%; } }
+.gun-main.detail-text { counter-reset: sec; }
+.gun-main.detail-text h2 { display: flex; align-items: baseline; gap: 0.75rem; }
+.gun-main.detail-text h2::before { counter-increment: sec; content: "§" counter(sec, decimal-leading-zero); font-family: var(--font-dot); font-weight: 900; opacity: 0.55; }
+.dotbar { display: grid; grid-template-columns: repeat(20, 1fr); gap: 3px; align-self: center; }
+.dotbar i { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--ink); opacity: 0.3; }
+.dotbar i.on { background: var(--ink); opacity: 1; animation: dpop 0.3s ease-out both; animation-delay: calc(var(--i) * 25ms); }
+.dotbar i.hot { background: var(--signal); }
+@keyframes dpop { from { transform: scale(0); } to { transform: scale(1); } }
+.gun-side .dotbar { grid-column: 1; }
+.gun-pn { grid-template-columns: 1fr auto 1fr; align-items: stretch; }
+.gun-cmd { align-self: center; font-family: var(--font-dot); font-weight: 900; }
+.gun-cmd i { font-style: normal; animation: blink 1s steps(2) infinite; }
+@media (max-width: 560px) { .gun-pn { grid-template-columns: 1fr; } .gun-cmd { display: none; } }
+/* 動態效果關閉時 */
+:root[data-motion="off"] .scan, :root[data-motion="off"] .gun-cmd i { animation: none; }
+:root[data-motion="off"] .scan { display: none; }
+:root[data-motion="off"] .dotbar i.on { animation: none; }
+
+/* ===== 導覽列：編號＋圓點指示 ===== */
+.site-header { position: sticky; top: 0; z-index: 50; background: var(--paper); }
+@media (max-width: 900px) { .site-header { position: static; } }
+.gun-side { top: 6rem; }
+.site-header nav { counter-reset: nv; gap: 0.5rem; }
+.site-header nav a { counter-increment: nv; display: inline-flex; align-items: center; gap: 0.4rem; border-bottom: 0; padding: 0.35rem 0.6rem; transition: background 0.15s, color 0.15s; }
+.site-header nav a::before { content: counter(nv, decimal-leading-zero); font-family: var(--font-dot); font-weight: 900; opacity: 0.45; transition: opacity 0.15s; }
+.site-header nav a::after { content: ""; width: 0.55em; height: 0.55em; border-radius: 50%; border: 2px solid var(--ink); opacity: 0; transform: scale(0.3); transition: opacity 0.15s, transform 0.2s; }
+.site-header nav a:hover { background: var(--tint); }
+.site-header nav a:hover::before { opacity: 1; }
+.site-header nav a:hover::after { opacity: 0.6; transform: scale(1); }
+.site-header nav a[aria-current="page"] { font-weight: 700; }
+.site-header nav a[aria-current="page"]::before { opacity: 1; }
+.site-header nav a[aria-current="page"]::after { opacity: 1; transform: scale(1); background: var(--signal); }
+@media (max-width: 720px) { .site-header nav a::after { display: none; } }
+
+/* 修正：舊的 dl 版面設定不再適用 */
+.dossier-facts { display: block; }
+.dossier-facts .field { display: flex; }
+.site-header nav { gap: 0; flex-wrap: nowrap; }
+.site-header nav a { position: relative; padding: 0.35rem 0.55rem; gap: 0.3rem; white-space: nowrap; }
+.site-header nav a::after { position: absolute; top: 0.1rem; right: 0.1rem; width: 0.45em; height: 0.45em; }
+.site-search { flex: 1 1 12rem; min-width: 10rem; }
+
+/* ===== 全站統一：狀態列、FILE 編號、§ 編號、表頭 ===== */
+#status-bar { margin: 1rem 0 0; }
+#status-bar[hidden] { display: none; }
+.card .file-no { margin: 0 0 0.25rem; font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.06em; opacity: 0.6; }
+.card:hover .file-no { color: var(--signal); opacity: 1; }
+#view-home { counter-reset: sec; }
+#view-home .home-section > h2, #view-home .timeline-section > h2 { display: flex; align-items: baseline; gap: 0.75rem; }
+#view-home .home-section > h2::before, #view-home .timeline-section > h2::before { counter-increment: sec; content: "§" counter(sec, decimal-leading-zero); font-family: var(--font-dot); font-weight: 900; opacity: 0.55; }
+table thead th { background: var(--ink); color: var(--paper); padding: 0.6rem 0.75rem 0.6rem 0; border-bottom: 0; font-family: var(--font-body); }
+table thead th:first-child { padding-left: 0.75rem; }
+td { border-bottom: 2px dotted var(--line); }
+td:first-child { padding-left: 0.75rem; }
+
+/* ===== 卡片傾斜與光斑 ===== */
+.card { position: relative; transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--ty, 0px)); }
+.card::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s; background: radial-gradient(circle 110px at var(--gx, 50%) var(--gy, 50%), rgba(217, 196, 90, 0.35), transparent 70%); }
+.card:hover::after { opacity: 1; }
+/* 動態效果關閉時 */
+:root[data-motion="off"] .card { transform: none; }
+:root[data-motion="off"] .card::after { display: none; }
+
+/* ===== 音效開關 ===== */
+.sound-toggle, .motion-toggle { margin-right: 0.5rem; white-space: nowrap; }
+@media (max-width: 720px) { .sound-toggle, .motion-toggle { margin-right: 0.25rem; padding: 0.25rem 0.5rem; } }
+
+/* ===== 規格：生活中的東西比一比 ===== */
+.gun-side .stat-row.has-cmp { cursor: help; outline-offset: 4px; }
+.stat-compare { grid-column: 1 / 3; display: flex; flex-direction: column; gap: 0.35rem; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.25s ease, opacity 0.25s ease; font-weight: 700; }
+.stat-row.has-cmp:hover .stat-compare, .stat-row.has-cmp:focus .stat-compare, .stat-row.has-cmp:focus-within .stat-compare { max-height: 6rem; opacity: 1; padding-top: 0.35rem; }
+.cmp-dots { display: flex; flex-wrap: wrap; gap: 4px; }
+.cmp-dots i { width: 14px; height: 6px; border-radius: 3px; background: var(--signal); border: 1.5px solid var(--ink); }
+@media (hover: none) { .stat-compare { max-height: none; opacity: 1; padding-top: 0.35rem; } }
+/* 動態效果關閉時 */
+:root[data-motion="off"] .stat-compare { transition: none; }
+
+/* ===== 圓點子彈實驗室 ===== */
+.bullet-lab { margin: 2rem 0; padding: 1.25rem; border: 2px solid var(--ink); }
+.bullet-lab h2 { margin: 0 0 0.25rem; font-family: var(--font-title); font-size: var(--fs-sub); }
+.lab-chips { margin: 0.75rem 0; flex-wrap: wrap; }
+.lab-canvas { display: block; width: 100%; cursor: grab; touch-action: pan-y; background: radial-gradient(circle, var(--line) 1px, transparent 1.2px) 0 0 / 18px 18px; border: 1px solid var(--line); }
+.lab-canvas:active { cursor: grabbing; }
+.lab-info { margin-top: 0.75rem; }
+.lab-info p { margin: 0.25rem 0; }
+.lab-diff { padding: 0.5rem 0.75rem; border-left: 4px solid var(--signal); background: rgba(217, 196, 90, 0.2); font-weight: 700; }
+.gun-side .stat-compare { order: 9; }
+
+/* 圓點子彈：精簡讀數 */
+.lab-info { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1.5rem; font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.04em; }
+.lab-info p { margin: 0; }
+.lab-read { display: inline-flex; gap: 0.75rem; align-items: baseline; }
+.lab-read b { padding: 0 0.5rem; background: var(--ink); color: var(--paper); }
+.lab-read span { opacity: 0.75; }
+.lab-diff { padding: 0 0.6rem; border-left: 0; background: var(--signal); color: #17303F; }
+.bullet-lab { padding: 1.5rem; }
+.bullet-lab h2 { margin-bottom: 0.75rem; }
+.lab-canvas { margin-top: 0.25rem; }
+/* 卡片上的圓點照片：滑鼠經過時由 feel.js 疊上一張會被推開的圓點畫布 */
+.dm .dot-live { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.dm.fx-live > img { opacity: 0; }
+
+/* ===== 3D 展示頁 ===== */
+.show-lab .show-canvas { height: 460px; }
+.show-hint { opacity: 0.7; }
+.show-parts, .show-tools { margin-top: 0.75rem; }
+.show-parts .map-chip.is-hover { background: var(--signal); color: #17303F; }
+.show-parts .map-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.show-lab .lab-diff { flex: 1 1 100%; }
+@media (max-width: 600px) { .show-lab .show-canvas { height: 360px; } }
+@media (min-width: 901px) {
+  .site-header nav { gap: 0; }
+  .site-header nav a { padding: 0.35rem 0.4rem; gap: 0.3rem; white-space: nowrap; }
+  .site-header { column-gap: 0.75rem; }
+  .site-search { flex: 1 1 8rem; min-width: 8rem; }
+}
+@media (min-width: 901px) and (max-width: 1200px) {
+  .site-header nav a::before { display: none; }
+  .site-header nav a { padding: 0.35rem 0.5rem; }
+}
+.show-acc { margin-top: 0.75rem; align-items: center; }
+.show-acc-label { font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.08em; padding-right: 0.25rem; }
+.show-acc .map-chip.is-hover { background: var(--signal); color: #17303F; }
+.show-trade { flex: 1 1 100%; margin: 0; opacity: 0.85; }
+.show-cycle { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-top: 0.75rem; }
+.show-slider { flex: 1 1 12rem; min-width: 8rem; accent-color: var(--ink); cursor: pointer; }
+.show-phase { flex: 1 1 100%; margin: 0; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
+.show-phase b { padding: 0 0.5rem; background: var(--signal); color: #17303F; font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.04em; }
+
+/* 詳情頁照片：靜態實拍照片 */
+.dm.still { cursor: default; }
+.dm.still .real { -webkit-mask-image: none; mask-image: none; }
+
+/* ===== 3D 展示：左邊模型、右邊控制面板（手機上下排） ===== */
+.show-lab .lab-chips { margin-top: 0; }
+.show-grid { margin-top: 1rem; }
+.show-stage .show-canvas { margin-top: 0; }
+.show-side .show-info { margin-top: 0; align-content: flex-start; }
+.show-label { flex: 1 1 100%; margin: 1rem 0 0; font-family: var(--font-dot); font-weight: 900; letter-spacing: 0.08em; opacity: 0.7; }
+.show-acc .show-label { margin-top: 0.5rem; padding: 0; }
+.show-side .map-chips { margin-top: 0.5rem; gap: 0.4rem; }
+.show-side .map-chip { min-height: 0; padding: 0.2rem 0.6rem; }
+.show-side .show-tools { margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dotted var(--line); }
+.show-note { margin: 0.75rem 0 0; opacity: 0.7; }
+@media (min-width: 901px) {
+  .show-grid { display: grid; grid-template-columns: minmax(0, 1fr) 19rem; gap: 1.5rem; align-items: start; }
+  .show-lab .show-canvas { height: 520px; }
+  .show-side { position: sticky; top: 6rem; }
+}
+@media (max-width: 900px) { .show-side { margin-top: 1rem; } }
+.show-side .lab-diff { padding: 0; background: none; color: inherit; font-family: var(--font-body); font-weight: 400; letter-spacing: 0; margin-top: 0.5rem; }
+.show-side .show-trade { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; margin-top: 0.25rem; }
+.show-side .show-hint { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; }
+.lab-read { flex-wrap: wrap; }
+.lab-read span { white-space: nowrap; }
+@media (max-width: 640px) {
+  .bullet-lab .lab-chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.5rem; scrollbar-width: thin; }
+  .bullet-lab .lab-chips .map-chip { flex: none; }
+}
+/* 多了「動態」按鈕後，搜尋框可以再縮小一點，讓導覽列維持一排 */
+@media (min-width: 901px) {
+  .site-search { flex: 1 1 6rem; min-width: 5.5rem; }
+  .site-header nav a { padding: 0.35rem 0.3rem; }
+  .sound-toggle, .motion-toggle { margin-right: 0.35rem; }
+}
+@media (min-width: 901px) and (max-width: 1100px) {
+  .site-header nav a { padding: 0.35rem 0.2rem; }
+  .theme-toggle { padding-left: 0.5rem; padding-right: 0.5rem; }
+  .site-header { column-gap: 0.5rem; }
+}
+/* 手機：開關只顯示「動態」「音效」兩個字，開啟時按鈕變成深色底 */
+@media (max-width: 560px) {
+  .tg-state { display: none; }
+  .motion-toggle[aria-pressed="true"], .sound-toggle[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+  .sound-toggle, .motion-toggle, .theme-toggle { padding: 0.25rem 0.45rem; margin-right: 0.2rem; }
+}
+@media (max-width: 720px) {
+  .site-header { column-gap: 0.35rem; justify-content: flex-start; }
+  .site-header .brand { margin-right: auto; }
+}
+@media (min-width: 901px) and (max-width: 980px) {
+  .site-header nav a { padding: 0.35rem 0.15rem; }
+  .site-search { min-width: 4.5rem; }
+}

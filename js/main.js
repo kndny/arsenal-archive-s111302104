@@ -604,6 +604,7 @@ const logoPixels = [[5,0,2,2],[5,10,2,2],[0,5,2,2],[10,5,2,2],[4,2,4,1],[4,9,4,1
 function artPlaceholder(typeId) {
   const box = el("div", "art");
   box.appendChild(pixelIcon(typeId));
+  box.appendChild(el("span", "art-note", "尚無照片"));
   return box;
 }
 
@@ -614,12 +615,56 @@ function photo(gun) {
   const img = el("img");
   img.alt = gun.name;
   img.loading = "lazy";
+  img.classList.add("is-loading");      // 載入前顯示骨架，載入完成後淡入
+  img.addEventListener("load", function () { img.classList.remove("is-loading"); });
   img.src = "images/" + gun.id + ".jpg";
   img.addEventListener("error", function () {
     if (img.src.endsWith(".jpg")) img.src = "images/" + gun.id + ".png";
     else img.replaceWith(artPlaceholder(gun.type));
   });
   return img;
+}
+
+/* ---------- 點陣照片 ----------
+   平常顯示圓點組成的點陣版，游標（或手指）移到哪裡，那一圈就變回真實照片。
+   點陣圖與裁掉白邊的照片是事先轉好的：images/dots/<代號>.png、images/c/<代號>.jpg。
+   任何一張缺檔，就退回一般照片，所以新增槍時只放 images/<代號>.jpg 也不會壞。 */
+function dotPhoto(gun, big) {
+  const wrap = el("div", "dm");
+  const dots = el("img", "dots");
+  dots.alt = ""; dots.setAttribute("aria-hidden", "true");
+  dots.src = "images/dots/" + gun.id + (big ? "" : "-s") + ".png";
+  if (!big) dots.loading = "lazy";
+  const real = el("img", "real");
+  real.alt = gun.name;
+  real.src = "images/c/" + gun.id + ".jpg";
+  if (!big) real.loading = "lazy";
+  function fallback() { if (wrap.parentNode) wrap.replaceWith(photo(gun)); }
+  dots.addEventListener("error", fallback);
+  real.addEventListener("error", fallback);
+  wrap.appendChild(dots);
+  wrap.appendChild(real);
+  const move = function (e) {
+    const r = wrap.getBoundingClientRect();
+    wrap.style.setProperty("--mx", (e.clientX - r.left) + "px");
+    wrap.style.setProperty("--my", (e.clientY - r.top) + "px");
+    wrap.classList.add("is-touched");
+  };
+  wrap.addEventListener("pointermove", move);
+  wrap.addEventListener("pointerdown", move);
+  wrap.addEventListener("pointerleave", function () { wrap.style.setProperty("--mx", "-999px"); });
+  return wrap;
+}
+
+// 詳情頁的照片：只放實拍照片（放在和圖鑑一樣的圓點底板上），不做左右切換的圓點效果
+function stillPhoto(gun) {
+  const wrap = el("div", "dm still");
+  const real = el("img", "real");
+  real.alt = gun.name;
+  real.src = "images/c/" + gun.id + ".jpg";
+  real.addEventListener("error", function () { if (wrap.parentNode) wrap.replaceWith(photo(gun)); });
+  wrap.appendChild(real);
+  return wrap;
 }
 
 // 圖片來源：下載照片後，把作者與授權寫在這裡，詳細畫面會自動顯示。
@@ -851,6 +896,12 @@ function renderMap() {
     const title = el("h3", "", spot.name);
     title.appendChild(el("span", "count", list.length + " 把"));
     panel.appendChild(title);
+    if (zoomed) {
+      const back = el("button", "map-chip map-back", "縮回全圖");
+      back.type = "button";
+      back.addEventListener("click", zoomOut);
+      panel.appendChild(back);
+    }
     if (year !== null) panel.appendChild(el("p", "map-year-note", year + " 年在役的槍"));
     if (list.length === 0) {
       panel.appendChild(el("p", "", "這個年份沒有在役的槍。"));
@@ -859,16 +910,50 @@ function renderMap() {
     const ul = el("ul", "map-guns");
     list.forEach(function (gun) {
       const li = el("li");
-      const a = el("a", "", gun.name + "（" + typeName(gun.type) + "，" + gun.year + "）");
+      const a = el("a", "map-gun-card");
       a.href = "#/gun/" + gun.id;
+      a.appendChild(photo(gun));
+      a.appendChild(el("b", "", gun.name));
+      a.appendChild(el("span", "", typeName(gun.type) + "・" + gun.year));
       li.appendChild(a);
       ul.appendChild(li);
     });
     panel.appendChild(ul);
   }
 
-  function select(spot) {
+  // 縮放：用動畫改變 SVG 的可視範圍，把選到的國家放大到畫面中央
+  const FULL = [0, 0, colsN * CELL, rowsN * CELL];
+  let vb = FULL.slice(), vbAnim = null, zoomed = false;
+  function setVB(v) { vb = v; svg.setAttribute("viewBox", v.map(function (n) { return n.toFixed(1); }).join(" ")); }
+  function flyTo(target) {
+    if (vbAnim) cancelAnimationFrame(vbAnim);
+    if (reduceMotion()) { setVB(target); return; }
+    const from = vb.slice(), t0 = performance.now();
+    (function step(now) {
+      const k = Math.min(1, (now - t0) / 550), e = 1 - Math.pow(1 - k, 3);
+      setVB(from.map(function (f, i) { return f + (target[i] - f) * e; }));
+      vbAnim = k < 1 ? requestAnimationFrame(step) : null;
+    })(t0);
+  }
+  function zoomIn(spot) {
+    let sx = 0, sy = 0;
+    spot.cells.forEach(function (rc) { sx += rc[1] * CELL + CELL / 2; sy += rc[0] * CELL + CELL / 2; });
+    const cxs = sx / spot.cells.length, cys = sy / spot.cells.length;
+    const w = FULL[2] / (spot.r >= 3 ? 2.2 : 3), h = FULL[3] / (spot.r >= 3 ? 2.2 : 3);
+    flyTo([Math.max(0, Math.min(FULL[2] - w, cxs - w / 2)), Math.max(0, Math.min(FULL[3] - h, cys - h / 2)), w, h]);
+    zoomed = true;
+    box.classList.add("is-zoomed");
+  }
+  function zoomOut() {
+    flyTo(FULL.slice());
+    zoomed = false;
+    box.classList.remove("is-zoomed");
+    if (current) showPanel(current);
+  }
+
+  function select(spot, fly) {
     current = spot;
+    if (fly) zoomIn(spot);
     groups.forEach(function (g) { g.group.classList.toggle("active", g.spot === spot); });
     buttons.forEach(function (b) { b.button.setAttribute("aria-pressed", b.spot === spot ? "true" : "false"); });
     showPanel(spot);
@@ -881,9 +966,10 @@ function renderMap() {
     group.setAttribute("role", "button");
     group.setAttribute("aria-label", spot.name + "，" + spot.guns.length + " 把");
     spot.cells.forEach(function (rc) { dot(group, rc[0], rc[1], 4.6); });
-    group.addEventListener("click", function () { select(spot); });
-    group.addEventListener("mouseenter", function () { select(spot); });
-    group.addEventListener("focus", function () { select(spot); });
+    group.addEventListener("click", function () { select(spot, true); });
+    group.addEventListener("mouseenter", function () { if (!zoomed) select(spot); });
+    group.addEventListener("focus", function () { if (!zoomed) select(spot); });
+    group.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); select(spot, true); } });
     svg.appendChild(group);
     groups.push({ spot: spot, group: group });
   });
@@ -895,7 +981,7 @@ function renderMap() {
     button.type = "button";
     button.setAttribute("aria-pressed", "false");
     button.appendChild(el("span", "count", String(spot.guns.length)));
-    button.addEventListener("click", function () { select(spot); });
+    button.addEventListener("click", function () { select(spot, true); box.scrollIntoView({ block: "nearest", behavior: reduceMotion() ? "auto" : "smooth" }); });
     chips.appendChild(button);
     buttons.push({ spot: spot, button: button });
   });
@@ -1047,7 +1133,8 @@ const arrowRight = [[0,0,1,1],[0,1,2,1],[0,2,3,1],[0,3,4,1],[0,4,5,1],[0,5,4,1],
 const tlViewport = document.getElementById("timeline-viewport");
 const tlPrev = document.getElementById("tl-prev");
 const tlNext = document.getElementById("tl-next");
-const reduceMotion = function () { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; };
+// 動態效果是否關閉：由 index.html 開頭決定（使用者的選擇優先，其次是系統的「減少動態」）
+const reduceMotion = function () { return document.documentElement.dataset.motion === "off"; };
 
 // 捲到最左或最右時，對應的按鈕變成不能按
 function updateTimelineNav() {
@@ -1194,6 +1281,7 @@ document.getElementById("compare-go").addEventListener("click", function (e) { i
 
 
 /* ---------- 口徑對照：同一個比例尺的像素子彈 ---------- */
+let calType = "all";
 let calSort = "oal";
 // 一把槍用到哪些子彈：口徑欄位裡出現的每一種都算；mainCaliber 是最先寫的那一種
 function calibersOf(gun) { return calibers.filter(function (c) { return new RegExp(c.match).test(gun.caliber); }); }
@@ -1252,6 +1340,190 @@ function cartridgeSvg(c) {
   });
   return svg;
 }
+// 圓點子彈實驗室：用圓點組成的 3D 子彈，滑鼠拖曳旋轉，最多同時放兩顆用同樣比例比大小
+let labSel = ["9x19", "762x39"];
+// 對照物：新台幣 10 元硬幣，直徑 26 mm（厚 1.87 mm），和子彈用同一個比例畫在右邊
+const COIN_D = 26;
+function bulletPoints(c) {
+  // 旋轉體：沿著子彈長軸（x，由底部到彈頭尖端）逐段畫一圈圓點。part 0 是彈殼，1 是彈頭
+  const pts = [];
+  const gap = 1.7;
+  const ring = function (x, r, part) {
+    if (r < 0.05) { pts.push({ x: x, y: 0, z: 0, ny: 0, nz: 0, nx: 1, part: part }); return; }
+    const n = Math.max(5, Math.round(2 * Math.PI * r / gap));
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2;
+      pts.push({ x: x, y: Math.cos(a) * r, z: Math.sin(a) * r, nx: 0, ny: Math.cos(a), nz: Math.sin(a), part: part });
+    }
+  };
+  const baseR = c.base / 2, rimR = c.rim / 2, bulletR = (c.bullet || c.base * 0.8) / 2;
+  const caseLen = c.case;
+  for (let x = 0; x <= caseLen + 0.01; x += gap * 0.8) {
+    let r = baseR;
+    if (x < 1.4) r = rimR;
+    else if (c.shape === "bottle") {
+      const shoulder0 = caseLen * 0.58, shoulder1 = caseLen * 0.78, neckR = bulletR + 0.3;
+      if (x > shoulder1) r = neckR;
+      else if (x > shoulder0) r = baseR + (neckR - baseR) * (x - shoulder0) / (shoulder1 - shoulder0);
+    }
+    ring(x, r, 0);
+  }
+  // 底部圓盤（旋轉到正對底部時看得到）
+  for (let r = gap; r < rimR; r += gap) { const n = Math.max(5, Math.round(2 * Math.PI * r / gap)); for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; pts.push({ x: 0, y: Math.cos(a) * r, z: Math.sin(a) * r, nx: -1, ny: 0, nz: 0, part: 0 }); } }
+  if (c.shape === "shell") {
+    // 霰彈：後面是金屬底座，前面是紙／塑膠殼
+    pts.forEach(function (p) { p.part = p.x < 12 ? 0 : 1; });
+  } else {
+    const L = c.oal - caseLen;
+    for (let x = caseLen + gap * 0.8; x <= c.oal; x += gap * 0.8) {
+      const t = (x - caseLen) / L;
+      ring(x, bulletR * Math.pow(Math.max(0, 1 - t * t), 0.55), 1);
+    }
+  }
+  return pts;
+}
+
+function bulletLab() {
+  const wrap = el("section", "bullet-lab");
+  wrap.setAttribute("aria-label", "圓點子彈：拖曳旋轉，可選兩顆比較");
+  wrap.appendChild(el("h2", "", "圓點子彈"));
+  const chips = el("div", "cal-sort lab-chips");
+  const canvas = el("canvas", "lab-canvas");
+  canvas.setAttribute("role", "img");
+  const info = el("div", "lab-info");
+  const clamp = function () { while (labSel.length > 2) labSel.shift(); };
+  let pts = {};
+  function refreshChips() {
+    chips.querySelectorAll("button").forEach(function (b) { b.setAttribute("aria-pressed", labSel.indexOf(b.dataset.id) >= 0 ? "true" : "false"); });
+  }
+  calibers.forEach(function (c) {
+    const b = el("button", "map-chip", c.name);
+    b.type = "button"; b.dataset.id = c.id; b.title = c.name;
+    b.addEventListener("click", function () {
+      const i = labSel.indexOf(c.id);
+      if (i >= 0) { if (labSel.length > 1) labSel.splice(i, 1); } else { labSel.push(c.id); clamp(); }
+      refreshChips(); describe(); draw();
+    });
+    chips.appendChild(b);
+  });
+  wrap.append(chips, canvas, info);
+
+  function selected() { return labSel.map(function (id) { return calibers.find(function (c) { return c.id === id; }); }).filter(Boolean); }
+  function describe() {
+    info.replaceChildren();
+    const list = selected();
+    // 精簡讀數：名稱、全長 mm、動能 J；兩顆時多一行倍數
+    list.forEach(function (c) {
+      const d = el("p", "lab-read");
+      d.appendChild(el("b", "", c.name));
+      d.appendChild(el("span", "", c.oal.toFixed(0) + " mm"));
+      d.appendChild(el("span", "", c.energy.toLocaleString("en-US") + " J"));
+      d.appendChild(el("span", "", "≈ 硬幣 ×" + (c.oal / COIN_D).toFixed(1)));
+      info.appendChild(d);
+    });
+    if (list.length === 2) {
+      const a = list[0], b = list[1];
+      const x = Math.max(a.energy, b.energy) / Math.min(a.energy, b.energy), y = Math.max(a.oal, b.oal) / Math.min(a.oal, b.oal);
+      info.appendChild(el("p", "lab-diff", "J ×" + x.toFixed(1) + "　LEN ×" + y.toFixed(1)));
+    }
+  }
+
+  let ay = 0.6, ax = 0.12, drag = null, t0 = 0, auto = true;
+  const noMotion = reduceMotion();
+  function draw() {
+    const list = selected();
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const W = canvas.clientWidth || 600;
+    const maxOal = Math.max.apply(null, list.map(function (c) { return c.oal; }));
+    const maxRim = Math.max.apply(null, list.map(function (c) { return c.rim; }));
+    // 寬螢幕：子彈在左、硬幣在右；窄螢幕（手機）：子彈在上、硬幣在下，避免全部縮得太小
+    const narrow = W < 640;
+    const coinW = function (s) { return COIN_D * s + 40; };
+    let rowH, H, sc;
+    if (narrow) {
+      sc = Math.min((W - 40) / maxOal, 14, W * 0.4 / COIN_D);
+      rowH = Math.max(70, maxRim * sc * 1.8 + 30);
+      H = rowH * list.length + COIN_D * sc + 56;
+    } else {
+      rowH = 210; H = rowH * list.length + 10;
+      sc = Math.min((W - 84) / (maxOal + COIN_D), rowH * 0.8 / maxRim, 14, (H - 44) / COIN_D);
+    }
+    const bulletW = narrow ? W : W - coinW(sc);
+    if (canvas.width !== Math.round(W * dpr) || canvas.height !== Math.round(H * dpr)) { canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr); canvas.style.height = H + "px"; }
+    const g = canvas.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const ink = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#17303F";
+    const cy = Math.cos(ay), sy = Math.sin(ay), cx = Math.cos(ax), sx = Math.sin(ax);
+    list.forEach(function (c, row) {
+      if (!pts[c.id]) pts[c.id] = bulletPoints(c);
+      const ox = bulletW / 2, oy = rowH * row + rowH / 2 + 5, mid = c.oal / 2;
+      const back = [], front = [];
+      pts[c.id].forEach(function (p) {
+        // 先繞著垂直軸轉（左右拖曳），再繞著水平軸轉（上下拖曳）
+        const x0 = p.x - mid, y0 = p.y, z0 = p.z;
+        const x1 = x0 * cy + z0 * sy, z1 = -x0 * sy + z0 * cy;
+        const y2 = y0 * cx - z1 * sx, z2 = y0 * sx + z1 * cx;
+        const nx1 = p.nx * cy + p.nz * sy, nz1 = -p.nx * sy + p.nz * cy;
+        const nz2 = p.ny * sx + nz1 * cx;
+        const q = { sx: ox + x1 * sc, sy: oy + y2 * sc, z: z2, part: p.part };
+        (nz2 >= -0.05 ? front : back).push(q);
+      });
+      const paint = function (arr, alpha) {
+        arr.forEach(function (q) {
+          const rad = Math.max(0.9, sc * 0.27 * (1 + 0.45 * q.z / (maxOal / 2)));
+          g.beginPath(); g.arc(q.sx, q.sy, rad, 0, Math.PI * 2);
+          if (q.part === 1) { g.fillStyle = "rgba(217,196,90," + alpha + ")"; g.fill(); g.lineWidth = 0.8; g.strokeStyle = ink; g.globalAlpha = alpha; g.stroke(); g.globalAlpha = 1; }
+          else { g.globalAlpha = alpha; g.fillStyle = ink; g.fill(); g.globalAlpha = 1; }
+        });
+      };
+      paint(back, 0.22); paint(front, 1);
+    });
+    if (narrow) drawCoin(g, W / 2, rowH * list.length + COIN_D * sc / 2 + 6, sc, ink);
+    else drawCoin(g, W - coinW(sc) / 2, (H - 24) / 2, sc, ink);
+    canvas.setAttribute("aria-label", "圓點子彈：" + list.map(function (c) { return c.name; }).join("與") + "，右邊是同比例的 10 元硬幣");
+  }
+  // 10 元硬幣：正面朝前的圓點圓盤，外圈較深，下方標示尺寸
+  function drawCoin(g, cx, cy, sc, ink) {
+    const R = COIN_D / 2 * sc, gap = 1.7 * sc;
+    const dot = Math.max(0.9, sc * 0.27);
+    g.fillStyle = ink;
+    for (let r = R; r > gap * 0.5; r -= gap) {
+      const n = Math.max(6, Math.round(2 * Math.PI * r / gap));
+      g.globalAlpha = r === R ? 1 : 0.32;
+      g.beginPath();
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; g.moveTo(cx + Math.cos(a) * r + dot, cy + Math.sin(a) * r); g.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, dot, 0, Math.PI * 2); }
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    g.font = "700 16px " + (getComputedStyle(document.body).fontFamily || "sans-serif");
+    g.textAlign = "center"; g.textBaseline = "middle";
+    g.fillText("10", cx, cy);
+    g.fillText("10 元硬幣 26 mm", cx, cy + R + 18);
+    g.textAlign = "start";
+  }
+  function loop(ts) {
+    if (!canvas.isConnected) return;
+    if (canvas.offsetParent !== null) {
+      if (auto && !drag && !noMotion) { ay = 0.6 + Math.sin(ts / 1600) * 0.55; }
+      draw();
+    }
+    requestAnimationFrame(loop);
+  }
+  canvas.addEventListener("pointerdown", function (e) { drag = { x: e.clientX, y: e.clientY, ay: ay, ax: ax }; auto = false; canvas.setPointerCapture(e.pointerId); });
+  canvas.addEventListener("pointermove", function (e) {
+    if (!drag) return;
+    ay = drag.ay + (e.clientX - drag.x) * 0.012;
+    ax = Math.max(-0.35, Math.min(0.35, drag.ax + (e.clientY - drag.y) * 0.006));
+    if (noMotion) draw();
+  });
+  const end = function () { drag = null; };
+  canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
+  refreshChips(); describe();
+  requestAnimationFrame(function () { draw(); requestAnimationFrame(loop); });
+  return wrap;
+}
+
 function renderCalibers(focusId) {
   const box = document.getElementById("caliber-body");
   box.replaceChildren();
@@ -1259,6 +1531,22 @@ function renderCalibers(focusId) {
 
   const tip = el("p", "cal-tip", "數字大不代表更強：5.56mm 的彈頭比 9mm 細，槍口動能卻是 9mm 的三倍以上。彈殼裝的火藥多少，影響更大。");
   box.appendChild(tip);
+  box.appendChild(bulletLab());
+
+  // 每種子彈有哪些槍在用（槍種篩選與連結都靠這個）
+  const usersOf = {};
+  calibers.forEach(function (c) { usersOf[c.id] = guns.filter(function (g) { return new RegExp(c.match).test(g.caliber); }); });
+  const typeOk = function (c) { return calType === "all" || usersOf[c.id].some(function (g) { return g.type === calType; }); };
+
+  const fbar = el("div", "cal-sort");
+  fbar.appendChild(el("span", "", "看哪種槍用的子彈"));
+  [{ id: "all", name: "全部" }].concat(gunTypes).forEach(function (t) {
+    const b = el("button", "map-chip", t.name); b.type = "button";
+    b.setAttribute("aria-pressed", calType === t.id ? "true" : "false");
+    b.addEventListener("click", function () { calType = t.id; renderCalibers(focusId); });
+    fbar.appendChild(b);
+  });
+  box.appendChild(fbar);
 
   const bar = el("div", "cal-sort");
   bar.appendChild(el("span", "", "排序"));
@@ -1281,7 +1569,7 @@ function renderCalibers(focusId) {
   ruler.appendChild(rArt); ruler.appendChild(el("span", "", ""));
   list.appendChild(ruler);
 
-  const sorted = calibers.slice().sort(function (a, b) { return calSort === "oal" ? a.oal - b.oal : calSort === "energy" ? a.energy - b.energy : a.bullet - b.bullet; });
+  const sorted = calibers.filter(typeOk).sort(function (a, b) { return calSort === "oal" ? a.oal - b.oal : calSort === "energy" ? a.energy - b.energy : a.bullet - b.bullet; });
   sorted.forEach(function (c) {
     const row = el("div", "cal-row" + (c.id === focusId ? " on" : ""));
     row.id = "cal-" + c.id;
@@ -1298,7 +1586,7 @@ function renderCalibers(focusId) {
     info.appendChild(el("span", "", "全長 " + c.oal.toFixed(1) + " mm"));
     if (c.bullet) info.appendChild(el("span", "", "彈頭 " + c.bullet.toFixed(1) + " mm"));
     info.appendChild(el("span", "", "動能 約 " + c.energy.toLocaleString("en-US") + " J"));
-    const users = guns.filter(function (g) { return new RegExp(c.match).test(g.caliber); });
+    const users = usersOf[c.id];
     if (users.length) {
       const chips = el("div", "chip-row");
       users.slice(0, 3).forEach(function (g) { const a = el("a", "map-chip", g.name); a.href = "#/gun/" + g.id; chips.appendChild(a); });
@@ -1333,11 +1621,76 @@ function renderFavorites() {
   if (favs.length >= 2) bar.appendChild(toCmp);
   box.appendChild(bar);
   const cards = el("div", "cards");
-  favs.forEach(function (id) { cards.appendChild(makeCard(findGun(id))); });
+  favs.forEach(function (id) { cards.appendChild(makeCard(findGun(id), true)); });
   box.appendChild(cards);
 }
 
 // 並排比較
+// 能力雷達圖：每個軸是 0～100 的相對值（以全站所有槍的最小～最大值換算），越靠外越好
+const RADAR_AXES = [
+  { label: "彈匣容量", get: function (g) { return gunStats[g.id] ? weaponFor(g.id).mag : null; }, inv: false },
+  { label: "射速", get: function (g) { if (!gunStats[g.id]) return null; const w = weaponFor(g.id); return w.mode === "auto" ? w.rpm : Math.round(60000 / w.rate); }, inv: false },
+  { label: "裝填速度", get: function (g) { return gunStats[g.id] ? weaponFor(g.id).reload : null; }, inv: true },
+  { label: "穩定度", get: function (g) { return gunStats[g.id] ? weaponFor(g.id).kick : null; }, inv: true },
+  { label: "初速", get: function (g) { const e = gunExtra[g.id]; return e && e.specs && e.specs.vel ? e.specs.vel : null; }, inv: false },
+  { label: "輕量", get: function (g) { const e = gunExtra[g.id]; return e && e.specs && e.specs.wt ? e.specs.wt : null; }, inv: true }
+];
+function buildRadar(data) {
+  const axes = RADAR_AXES.filter(function (ax) { return data.every(function (d) { return ax.get(d.g) !== null; }); });
+  if (axes.length < 3) return null;
+  axes.forEach(function (ax) {
+    const vals = guns.map(ax.get).filter(function (v) { return v !== null; });
+    ax.min = Math.min.apply(null, vals); ax.max = Math.max.apply(null, vals);
+  });
+  const W = 460, H = 400, cx = W / 2, cy = H / 2 + 4, R = 130, n = axes.length;
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.setAttribute("class", "radar-svg");
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-label", "能力雷達圖：" + data.map(function (d) { return d.g.name; }).join("、") + " 的" + axes.map(function (a) { return a.label; }).join("、") + "比較");
+  const pt = function (i, k) { const ang = -Math.PI / 2 + i * 2 * Math.PI / n; return [cx + Math.cos(ang) * R * k, cy + Math.sin(ang) * R * k]; };
+  function node(tag, attrs, parent) {
+    const e = document.createElementNS(SVG_NS, tag);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    (parent || svg).appendChild(e); return e;
+  }
+  [0.25, 0.5, 0.75, 1].forEach(function (k) {
+    node("polygon", { points: axes.map(function (_, i) { return pt(i, k).join(","); }).join(" "), class: "radar-ring" });
+  });
+  axes.forEach(function (ax, i) {
+    const o = pt(i, 1), l = pt(i, 1.2);
+    node("line", { x1: cx, y1: cy, x2: o[0], y2: o[1], class: "radar-axis" });
+    const t = node("text", { x: l[0], y: l[1], class: "radar-label", "text-anchor": Math.abs(l[0] - cx) < 8 ? "middle" : (l[0] > cx ? "start" : "end"), "dominant-baseline": "middle" });
+    t.textContent = ax.label;
+  });
+  const dash = ["", "8 5", "2 5"];
+  data.forEach(function (d, si) {
+    const poly = node("polygon", { class: "radar-shape s" + (si % 3), points: axes.map(function (ax, i) {
+      const v = ax.get(d.g);
+      let k = ax.max === ax.min ? 1 : (v - ax.min) / (ax.max - ax.min);
+      if (ax.inv) k = 1 - k;
+      return pt(i, 0.08 + 0.92 * k).join(",");
+    }).join(" ") });
+    if (dash[si % 3]) poly.setAttribute("stroke-dasharray", dash[si % 3]);
+    // 圖形由中心長出來
+    if (!reduceMotion() && poly.animate) poly.animate([{ transform: "scale(0.05)" }, { transform: "scale(1)" }], { duration: 650, easing: "cubic-bezier(.2,.8,.2,1)", delay: si * 120, fill: "backwards" });
+    poly.style.transformOrigin = cx + "px " + cy + "px";
+  });
+  const wrap = el("div", "radar");
+  wrap.appendChild(el("h2", "", "能力雷達"));
+  wrap.appendChild(svg);
+  const legend = el("ul", "radar-legend");
+  data.forEach(function (d, si) {
+    const li = el("li");
+    li.appendChild(el("i", "sw s" + (si % 3)));
+    li.appendChild(document.createTextNode(d.g.name));
+    legend.appendChild(li);
+  });
+  wrap.appendChild(legend);
+  wrap.appendChild(el("p", "range-note", "越靠外越好：穩定度是後座力越小越高，輕量是越輕越高。數值以全站收錄的槍換算，試射資料是模擬值。"));
+  return wrap;
+}
+
 function renderCompare() {
   const box = document.getElementById("compare-body");
   box.replaceChildren();
@@ -1351,6 +1704,8 @@ function renderCompare() {
     return;
   }
   const data = list.map(function (g) { return { g: g, w: gunStats[g.id] ? weaponFor(g.id) : null }; });
+  const radar = buildRadar(data);
+  if (radar) box.appendChild(radar);
   const wrap = el("div", "table-wrap");
   const t = el("table", "compare-table");
   const head = el("tr");
@@ -1461,11 +1816,13 @@ function renderCompare() {
   });
 })();
 
-function makeCard(gun) {
+// plain 為 true 時用一般照片（收藏頁用），否則是點陣照片（圖鑑用）
+function makeCard(gun, plain) {
   const wrap = el("div", "card-wrap");
   const card = el("a", "card");
   card.href = "#/gun/" + gun.id;
-  card.appendChild(photo(gun));
+  card.appendChild(plain ? photo(gun) : dotPhoto(gun, false));
+  card.appendChild(el("p", "file-no", "FILE " + String(guns.indexOf(gun) + 1).padStart(2, "0") + " ▸ " + gun.type.toUpperCase()));
   card.appendChild(el("h3", "", gun.name));
   card.appendChild(el("p", "meta", gun.country + "，" + gun.year + " 年"));
   card.appendChild(el("p", "", gun.caliber + "，" + gun.action));
@@ -1574,10 +1931,15 @@ function fillCountries() {
     if (!fRegion.value || g.region === fRegion.value) counts[g.country] = (counts[g.country] || 0) + 1;
   });
   fCountry.replaceChildren();
+  // 地區選「全部」時，國家會多達二十幾個，下拉清單會變成一大片要捲動的列表。
+  // 所以先選地區，國家選單才打開，清單長度就和其他選單差不多
+  fCountry.disabled = !fRegion.value;
+  if (!fRegion.value) { fCountry.add(new Option("先選地區", "")); return; }
   fCountry.add(new Option("全部", ""));
   Object.keys(counts)
     .sort(function (a, b) { return counts[b] - counts[a] || a.localeCompare(b, "zh-Hant"); })
-    .forEach(function (c) { fCountry.add(new Option(c + "（" + counts[c] + "）", c)); });
+    // 選單裡把「台灣（中華民國）」簡寫成「台灣」，讓四個選單能維持同寬（實際篩選的值不變）
+    .forEach(function (c) { fCountry.add(new Option(c.replace("（中華民國）", "") + "（" + counts[c] + "）", c)); });
   fCountry.value = counts[keep] ? keep : "";
 }
 
@@ -1658,6 +2020,29 @@ function termText(parent, text) {
   parent.appendChild(document.createTextNode(text.slice(last)));
   return parent;
 }
+// 圓點長條：總共 20 顆，亮幾顆代表比例，最後一顆亮黃色
+function dotBar(ratio, label) {
+  const n = 20, lit = Math.max(1, Math.min(n, Math.round(ratio * n)));
+  const bar = el("span", "dotbar");
+  bar.setAttribute("role", "img"); bar.setAttribute("aria-label", label);
+  for (let i = 0; i < n; i++) {
+    const d = el("i", i < lit - 1 ? "on" : (i === lit - 1 ? "on hot" : ""));
+    d.style.setProperty("--i", i);
+    bar.appendChild(d);
+  }
+  return bar;
+}
+
+// 把規格換成生活裡看得到的東西（滑鼠移到規格那一列就會展開）
+function everyday(key, v) {
+  const f = function (n) { return n >= 10 ? String(Math.round(n)) : n.toFixed(1); };
+  if (key === "len") return { count: Math.min(20, Math.max(1, Math.round(v / 150))), text: "約 " + f(v / 150) + " 支原子筆（15 cm）頭尾相接" };
+  if (key === "wt") return { count: Math.min(20, Math.max(1, Math.round(v / 0.6))), text: "約 " + f(v / 0.6) + " 瓶 600 ml 的礦泉水" };
+  if (key === "barrel") return { count: Math.min(20, Math.max(1, Math.round(v / 297))), text: "約 " + f(v / 297) + " 張 A4 紙的長邊（29.7 cm）" };
+  if (key === "vel") return { count: Math.min(20, Math.max(1, Math.round(v / 343))), text: "約音速的 " + f(v / 343) + " 倍，一秒飛 " + Math.round(v) + " 公尺" };
+  return null;
+}
+
 function renderGun(id) {
   const box = document.getElementById("gun-detail");
   box.replaceChildren();
@@ -1673,9 +2058,60 @@ function renderGun(id) {
     return null;
   }
 
-  const head = el("div", "page-title");
-  head.appendChild(el("h1", "", gun.name));
-  head.appendChild(el("p", "", typeName(gun.type)));
+  // 頂端狀態列：像在查閱檔案的終端機
+  const no0 = guns.indexOf(gun) + 1;
+  const status = el("div", "file-status");
+  const sl = el("span"); sl.append("ARSENAL ARCHIVE ▸ " + gun.type.toUpperCase() + " ▸ ");
+  sl.appendChild(el("b", "", "FILE " + String(no0).padStart(2, "0") + " / " + guns.length));
+  const sr = el("span"); sr.append("STATUS: ");
+  sr.appendChild(el("b", "", gun.activeTo ? "RETIRED " + gun.activeTo : "ACTIVE"));
+  sr.append(" SINCE " + gun.activeFrom);
+  status.append(sl, sr);
+  box.appendChild(status);
+
+  // 檔案卡：左邊大張照片，右邊是檔案編號、名稱與基本資料
+  const dossier = el("div", "dossier");
+  const figure = el("figure", "dossier-photo");
+  figure.appendChild(stillPhoto(gun));
+  if (imageCredits[gun.id]) figure.appendChild(el("figcaption", "", "圖片來源：" + imageCredits[gun.id]));
+  dossier.appendChild(figure);
+
+  const card = el("div", "dossier-card");
+  const no = guns.indexOf(gun) + 1;
+  const tab = el("p", "dossier-no");
+  tab.appendChild(el("b", "", gun.type.toUpperCase() + " · " + typeName(gun.type)));
+  card.appendChild(tab);
+  card.appendChild(el("h1", "", gun.name));
+  const info = el("div", "dossier-facts");
+  [
+    ["設計國家", gun.country + "（" + gun.region + "）"],
+    ["設計年份", gun.year + " 年"],
+    ["口徑", gun.caliber],
+    ["作動方式", gun.action]
+  ].forEach(function (row) {
+    const f = el("div", "field");
+    f.appendChild(el("span", "", row[0]));
+    f.appendChild(el("i"));
+    f.appendChild(termText(el("span", "val"), row[1]));
+    info.appendChild(f);
+  });
+  const mc = mainCaliber(gun);
+  if (mc) {
+    const f = el("div", "field");
+    f.appendChild(el("span", "", "口徑大小")); f.appendChild(el("i"));
+    const dd = el("span", "val");
+    const a = el("a", "", "看 " + mc.name + " 實際多大 →"); a.href = "#/calibers/" + mc.id;
+    dd.appendChild(a); f.appendChild(dd); info.appendChild(f);
+  }
+  {
+    // 連到 3D 展示：看這個槍種的示意模型與射擊循環
+    const f = el("div", "field");
+    f.appendChild(el("span", "", "內部構造")); f.appendChild(el("i"));
+    const dd = el("span", "val");
+    const a = el("a", "", "看" + typeName(gun.type) + "的 3D 結構 →"); a.href = "#/showcase/" + gun.type;
+    dd.appendChild(a); f.appendChild(dd); info.appendChild(f);
+  }
+  card.appendChild(info);
   const acts = el("div", "gun-actions");
   acts.appendChild(favButton(gun, true));
   acts.appendChild(cmpButton(gun));
@@ -1683,13 +2119,15 @@ function renderGun(id) {
     const t = el("a", "btn", "去試射"); t.href = "#/range/" + gun.id;
     acts.appendChild(t);
   }
-  head.appendChild(acts);
-  box.appendChild(head);
+  card.appendChild(acts);
+  dossier.appendChild(card);
+  box.appendChild(dossier);
 
-  const figure = el("figure", "gun-photo");
-  figure.appendChild(photo(gun));
-  if (imageCredits[gun.id]) figure.appendChild(el("figcaption", "", "圖片來源：" + imageCredits[gun.id]));
-  box.appendChild(figure);
+  // 下半部分兩欄：左邊是閱讀用的文字，右邊是數據（活躍時期、規格、試射數據）
+  const body = el("div", "gun-body");
+  const main = el("div", "gun-main");
+  const side = el("aside", "gun-side");
+  side.setAttribute("aria-label", "數據");
 
   // 活躍時期點陣條：每個點代表 5 年，亮的點表示那段時間仍在使用
   const life = el("div", "life");
@@ -1707,34 +2145,41 @@ function renderGun(id) {
   ["1900", "1950", "2000"].forEach(function (t) { ticks.appendChild(el("span", "", t)); });
   life.appendChild(ticks);
   life.appendChild(el("p", "", gun.activeNote));
-  box.appendChild(life);
+  side.appendChild(life);
 
-  const info = el("dl", "info");
-  [
-    ["設計國家", gun.country + "（" + gun.region + "）"],
-    ["設計年份", gun.year + " 年"],
-    ["口徑", gun.caliber],
-    ["作動方式", gun.action]
-  ].forEach(function (row) {
-    info.appendChild(el("dt", "", row[0]));
-    info.appendChild(termText(el("dd"), row[1]));
-  });
-  const mc = mainCaliber(gun);
-  if (mc) {
-    info.appendChild(el("dt", "", "口徑大小"));
-    const dd = el("dd");
-    const a = el("a", "", "看 " + mc.name + " 實際多大 →"); a.href = "#/calibers/" + mc.id;
-    dd.appendChild(a); info.appendChild(dd);
-  }
   const ex = gunExtra[gun.id] || {};
   const sp = ex.specs || {};
-  [["全長", sp.len, " mm"], ["空槍重量", sp.wt, " kg"], ["槍管長度", sp.barrel, " mm"], ["初速", sp.vel, " m/s"]].forEach(function (row) {
-    if (!row[1]) return;
-    info.appendChild(el("dt", "", row[0]));
-    info.appendChild(el("dd", "", "約 " + row[1].toLocaleString("en-US") + row[2]));
-  });
-  box.appendChild(info);
-  if (Object.keys(sp).length) box.appendChild(el("p", "range-note spec-note", "規格是常見型號的約略值，不同型號、不同槍管長度會有差異。"));
+  // 規格比較：長條長度 = 這把槍的數值 ÷ 同槍種裡的最大值，右邊是在同槍種裡的大小排名
+  const specRows = [["全長", "len", " mm"], ["空槍重量", "wt", " kg"], ["槍管長度", "barrel", " mm"], ["初速", "vel", " m/s"]].filter(function (row) { return sp[row[1]]; });
+  if (specRows.length) {
+    const specs = el("div", "gun-stats gun-specs");
+    specs.appendChild(el("h2", "", "規格比較"));
+    specRows.forEach(function (row) {
+      const key = row[1];
+      const vals = guns.filter(function (g) { return g.type === gun.type && gunExtra[g.id] && gunExtra[g.id].specs && gunExtra[g.id].specs[key]; })
+        .map(function (g) { return gunExtra[g.id].specs[key]; });
+      const max = Math.max.apply(null, vals), n = vals.length;
+      const rank = vals.filter(function (v) { return v > sp[key]; }).length + 1;
+      const line = el("div", "stat-row");
+      line.appendChild(el("span", "stat-label", row[0]));
+      line.appendChild(el("b", "stat-value", "約 " + sp[key].toLocaleString("en-US") + row[2]));
+      line.appendChild(dotBar(sp[key] / max, "同槍種 " + n + " 把裡第 " + rank + " 大"));
+      const cmpx = everyday(key, sp[key]);
+      if (cmpx) {
+        line.classList.add("has-cmp"); line.tabIndex = 0;
+        const box = el("div", "stat-compare");
+        const dd = el("span", "cmp-dots"); dd.setAttribute("aria-hidden", "true");
+        for (let i = 0; i < cmpx.count; i++) dd.appendChild(el("i"));
+        box.appendChild(dd);
+        box.appendChild(el("span", "", cmpx.text));
+        line.appendChild(box);
+      }
+      line.appendChild(el("span", "stat-rank", n > 1 ? "第 " + rank + " ／ " + n : "—"));
+      specs.appendChild(line);
+    });
+    specs.appendChild(el("p", "range-note", "和同樣是" + typeName(gun.type) + "的槍比較。規格是常見型號的約略值，不同型號、不同槍管長度會有差異。"));
+    side.appendChild(specs);
+  }
 
   // 試射數據：這把槍在同槍種裡排第幾（資料來自試射場的模擬值）
   if (gunStats[gun.id]) {
@@ -1755,17 +2200,16 @@ function renderGun(id) {
       const row = el("div", "stat-row");
       row.appendChild(el("span", "stat-label", s[0]));
       row.appendChild(el("b", "stat-value", s[3]));
-      const bar = el("span", "rank-bar"); bar.setAttribute("role", "img"); bar.setAttribute("aria-label", "同槍種第 " + rank + " 名，共 " + total + " 把");
-      const fill = el("i"); fill.style.width = (total > 1 ? (total - rank) / (total - 1) * 100 : 100) + "%";
-      bar.appendChild(fill); row.appendChild(bar);
+      row.appendChild(dotBar(total > 1 ? Math.max(0.05, (total - rank) / (total - 1)) : 1, "同槍種第 " + rank + " 名，共 " + total + " 把"));
       row.appendChild(el("span", "stat-rank", "第 " + rank + " ／ " + total));
       stats.appendChild(row);
     });
     stats.appendChild(el("p", "range-note", "和同樣是" + typeName(gun.type) + "的 " + peers.length + " 把槍比較。數值是為了遊戲估的，不是官方規格。"));
-    box.appendChild(stats);
+    side.appendChild(stats);
   }
 
-  const text = el("div", "detail-text");
+  const text = main;
+  text.classList.add("detail-text");
   text.appendChild(el("h2", "", "簡介"));
   text.appendChild(termText(el("p"), gun.summary));
   text.appendChild(el("h2", "", "歷史背景"));
@@ -1823,11 +2267,30 @@ function renderGun(id) {
     });
     related.appendChild(row);
   });
-  if (related.children.length) { text.appendChild(el("h2", "", "相關槍枝")); text.appendChild(related); }
+  body.appendChild(main);
+  body.appendChild(side);
+  box.appendChild(body);
+
+  const more2 = el("section", "gun-more");
+  if (related.children.length) { more2.appendChild(el("h2", "", "相關槍枝")); more2.appendChild(related); }
+  // 上一把、下一把：順著圖鑑的順序往下逛
+  const pn = el("nav", "gun-pn"); pn.setAttribute("aria-label", "上一把與下一把");
+  const idx = guns.indexOf(gun);
+  [[-1, "← 上一把"], [1, "下一把 →"]].forEach(function (d) {
+    const g = guns[(idx + d[0] + guns.length) % guns.length];
+    const a = el("a", "gun-pn-link " + (d[0] < 0 ? "prev" : "next"));
+    a.href = "#/gun/" + g.id;
+    a.appendChild(el("span", "", d[0] < 0 ? "◂ PREV" : "NEXT ▸"));
+    a.appendChild(el("b", "", g.name));
+    pn.appendChild(a);
+  });
+  const cmd = el("span", "gun-cmd", "CMD"); cmd.appendChild(el("i", "", "_")); cmd.setAttribute("aria-hidden", "true");
+  pn.insertBefore(cmd, pn.lastChild);
+  more2.appendChild(pn);
   const back = el("a", "back-link", "回到" + typeName(gun.type) + "圖鑑");
   back.href = "#/type/" + gun.type;
-  text.appendChild(back);
-  box.appendChild(text);
+  more2.appendChild(back);
+  box.appendChild(more2);
   return gun;
 }
 
@@ -1842,10 +2305,46 @@ const views = {
   range: document.getElementById("view-range"),
   defense: document.getElementById("view-defense"),
   calibers: document.getElementById("view-calibers"),
+  showcase: document.getElementById("view-showcase"),
   favorites: document.getElementById("view-favorites"),
   compare: document.getElementById("view-compare")
 };
-const pageTitles = { home: "", catalog: "槍種圖鑑｜", table: "篩選比較表｜", gun: "", type: "", games: "遊戲｜", range: "試射場｜", defense: "防線｜", calibers: "口徑對照｜", favorites: "我的檔案夾｜", compare: "並排比較｜" };
+const pageTitles = { home: "", catalog: "槍種圖鑑｜", table: "篩選比較表｜", gun: "", type: "", games: "遊戲｜", range: "試射場｜", defense: "防線｜", calibers: "口徑對照｜", showcase: "3D 展示｜", favorites: "我的檔案夾｜", compare: "並排比較｜" };
+
+// 換頁過場：整頁淡入，圖鑑卡片與詳細頁的區塊依序浮現（動畫本身在 CSS，減少動態時會自動關閉）
+function enterView(view) {
+  view.classList.remove("view-enter");
+  void view.offsetWidth;
+  view.classList.add("view-enter");
+}
+function staggerView(view) {
+  const nodes = view.querySelectorAll(".card-wrap, #gun-detail > *, .index-list li");
+  nodes.forEach(function (n, i) { n.style.setProperty("--i", Math.min(i, 14)); });
+}
+
+// 每一頁頂端的狀態列：目前在哪、有多少檔案（詳細頁自己有一條，遊戲場地頁不放，保留遊玩空間）
+function updateStatusBar(name, parts) {
+  const bar = document.getElementById("status-bar");
+  if (!bar) return;
+  const two = function (n) { return String(n).padStart(2, "0"); };
+  const sect = { home: "HOME", catalog: "CATALOG", table: "TABLE", games: "GAMES", calibers: "CALIBERS", showcase: "SHOWCASE", favorites: "FAVORITES", compare: "COMPARE", type: "CATALOG ▸ " + String(parts[1] || "").toUpperCase() };
+  const right = {
+    home: two(guns.length) + " FILES · " + two(gunTypes.length) + " TYPES",
+    catalog: two(gunTypes.length) + " TYPES",
+    table: two(guns.length) + " FILES",
+    games: "READY",
+    calibers: two(calibers.length) + " CALIBERS",
+    showcase: "06 MODELS",
+    favorites: two(favs.length) + " SAVED",
+    compare: two(cmp.length) + " SELECTED",
+    type: two(guns.filter(function (g) { return g.type === parts[1]; }).length) + " FILES"
+  };
+  if (!sect[name]) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.replaceChildren();
+  const l = el("span"); l.append("ARSENAL ARCHIVE ▸ "); l.appendChild(el("b", "", sect[name]));
+  bar.append(l, el("span", "", right[name]));
+}
 
 function route() {
   // 例如 "#/catalog/hg" 會變成 ["catalog", "hg"]
@@ -1854,10 +2353,13 @@ function route() {
 
   Object.keys(views).forEach(function (key) { views[key].hidden = key !== name; });
   updateTimelineNav();
+  updateStatusBar(name, parts);
+  enterView(views[name]);
   if (name !== "range" && name !== "defense") stopRange();
   if (name === "games") renderGames();
   if (name === "range") renderRange(undefined, parts[1]);
   if (name === "calibers") renderCalibers(parts[1]);
+  if (name === "showcase") renderShowcase(parts[1]);
   if (name === "favorites") renderFavorites();
   if (name === "compare") renderCompare();
   refreshMarks();
@@ -1880,6 +2382,7 @@ function route() {
     titlePart = type ? type.name + "｜" : "";
   }
   document.title = titlePart + "槍械檔案館 Arsenal Archive";
+  staggerView(views[name]);
 
   // 圖鑑頁可以直接跳到某個槍種，其他情況回到頁面最上方
   const target = name === "catalog" && parts[1] ? document.getElementById("type-" + parts[1]) : null;
@@ -1889,20 +2392,7 @@ function route() {
 
 
 // 首頁主視覺：大型像素槍，以及自動計算的收錄數量（之後新增槍會自動更新）
-// 主視覺的大型像素槍：點一下換下一種槍，每次都會重新一塊一塊拼出來
-const heroTypes = ["ar", "hg", "smg", "rf", "mg", "sg"];
-let heroIndex = 0;
-function showHeroGun() {
-  const id = heroTypes[heroIndex];
-  const type = gunTypes.find(function (t) { return t.id === id; });
-  document.getElementById("hero-art-gun").replaceChildren(pixelIcon(id));
-  document.getElementById("hero-art-label").textContent = type.code + "　" + type.name;
-}
-document.getElementById("hero-art").addEventListener("click", function () {
-  heroIndex = (heroIndex + 1) % heroTypes.length;
-  showHeroGun();
-});
-showHeroGun();
+// 首頁主視覺的圓點變形在 js/fx.js
 
 // 頁首標誌與跑馬燈
 document.getElementById("logo").appendChild(drawPixels(logoPixels, 12, 12));
@@ -1927,6 +2417,7 @@ setupTable();
   const box = document.getElementById("quick-tiles");
   [
     { href: "#/catalog", icon: pixelIcon("ar"), code: "CATALOG", name: "槍種圖鑑", desc: "依六大槍種瀏覽，了解每把槍的簡介與歷史背景。", extra: "共 " + guns.length + " 把" },
+    { href: "#/showcase", icon: pixelIcon("rf"), code: "SHOWCASE", name: "3D 展示", desc: "旋轉圓點模型，看零件、裝配件、播放射擊循環。", extra: "六種模型" },
     { href: "#/table", icon: pixelIcon("smg"), code: "TABLE", name: "篩選比較表", desc: "依槍種、國家與年代篩選，並排比較多把槍的差異。", extra: "最多比較 3 把" },
     { href: "#/range", icon: drawPixels(logoPixels, 12, 12), narrow: true, code: "RANGE", name: "試射場", desc: "實際試射，感受每把槍不同的後座力吧。", extra: "六種槍種" },
     { href: "#/defense", icon: pixelIcon("mg"), code: "DEFENSE", name: "防線", desc: "用槍械守住防線，每一波挑選配件強化自己吧。", extra: "無盡模式" }
@@ -2619,6 +3110,10 @@ function renderRange(mode, startGun) {
   let soundOn = readFlag("arsenal-range-sound", false);
   let vibrateOn = readFlag("arsenal-range-vibrate", true);
   const coarse = window.matchMedia("(pointer: coarse)").matches;
+  // 觸控靈敏度：手指滑過畫面的距離換算成視角轉動的倍率，可在畫面右上角切換（低／中／高）
+  const SENS_NAMES = ["低", "中", "高"], SENS_RATE = [1.4, 2.4, 3.8];
+  let touchSens = 1;
+  try { const v = parseInt(localStorage.getItem("arsenal-touch-sens"), 10); if (v >= 0 && v < SENS_NAMES.length) touchSens = v; } catch (err) {}
   const canVibrate = !!(navigator.vibrate && coarse);
 
   // ===== 控制列：槍種、音效與震動、換靶紙 =====
@@ -2746,27 +3241,64 @@ function renderRange(mode, startGun) {
   [world, scope, ring, cross, flash, gunWrap, hitmark, hud, chalHud, countEl, escChip, lockMsg, resultBox].forEach(function (n) { field.appendChild(n); });
 
   // 觸控裝置：拖曳畫面轉動視角，右下角有開火與裝填按鈕
+  let stickX = 0, stickY = 0;
   let fireBtn = null, reloadBtn = null, adsBtn = null, fieldFullOff = null;
   if (coarse) {
     lockMsg.hidden = true;
     const pad = el("div", "range-touch");
-    fireBtn = el("button", "range-touch-btn fire", "開火");
-    reloadBtn = el("button", "range-touch-btn", "裝填");
-    adsBtn = el("button", "range-touch-btn", "開鏡");
-    adsBtn.type = "button";
-    fireBtn.type = "button";
-    reloadBtn.type = "button";
-    const swapBtn = el("button", "range-touch-btn", "換槍");
-    swapBtn.type = "button";
+    // 按鍵位置參考一般槍戰手遊：右手拇指拖曳瞄準、右下開火，左下再放一顆開火鍵，左手拇指也能射擊
+    fireBtn = el("button", "range-touch-btn fire right", "開火");
+    reloadBtn = el("button", "range-touch-btn reload", "裝填");
+    adsBtn = el("button", "range-touch-btn ads", "開鏡");
+    const swapBtn = el("button", "range-touch-btn swap", "換槍");
+    [fireBtn, reloadBtn, adsBtn, swapBtn].forEach(function (b) { b.type = "button"; });
     swapBtn.addEventListener("click", function (e) { e.stopPropagation(); cycleGun(1, false); });
     swapBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
+    // 左下角搖桿：左手拇指控制視角，推越遠轉越快；放開就回中
+    const stick = el("div", "range-stick");
+    const knob = el("div", "range-stick-knob");
+    stick.appendChild(knob);
+    let stickId = null;
+    function stickMove(e) {
+      const r = stick.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2, max = r.width / 2;
+      let dx = e.clientX - cx, dy = e.clientY - cy;
+      const len = Math.hypot(dx, dy);
+      if (len > max) { dx = dx / len * max; dy = dy / len * max; }
+      stickX = dx / max; stickY = dy / max;
+      knob.style.transform = "translate(" + dx / zoomUI() + "px," + dy / zoomUI() + "px)";
+    }
+    function zoomUI() { return parseFloat(getComputedStyle(field).getPropertyValue("--ui")) || 1; }
+    function stickEnd(e) {
+      if (e.pointerId !== stickId) return;
+      stickId = null; stickX = 0; stickY = 0; knob.style.transform = "";
+    }
+    stick.addEventListener("pointerdown", function (e) {
+      e.stopPropagation(); stickId = e.pointerId;
+      try { stick.setPointerCapture(e.pointerId); } catch (err) {}
+      stickMove(e);
+    });
+    stick.addEventListener("pointermove", function (e) { if (e.pointerId === stickId) { e.stopPropagation(); stickMove(e); } });
+    stick.addEventListener("pointerup", stickEnd);
+    stick.addEventListener("pointercancel", stickEnd);
+    pad.appendChild(stick);
     pad.appendChild(swapBtn);
-    pad.appendChild(adsBtn);
     pad.appendChild(reloadBtn);
+    pad.appendChild(adsBtn);
     pad.appendChild(fireBtn);
     field.appendChild(pad);
     field.classList.add("has-touch");
     // 手機：全螢幕按鈕。畫面很小，全螢幕玩比較好操作
+    const tools = el("div", "range-tools");
+    const sensBtn = el("button", "range-full-btn", "靈敏度：" + SENS_NAMES[touchSens]);
+    sensBtn.type = "button";
+    sensBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      touchSens = (touchSens + 1) % SENS_NAMES.length;
+      sensBtn.textContent = "靈敏度：" + SENS_NAMES[touchSens];
+      try { localStorage.setItem("arsenal-touch-sens", String(touchSens)); } catch (err) {}
+    });
+    sensBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
     const fullBtn = el("button", "range-full-btn", "全螢幕");
     fullBtn.type = "button";
     function setFull(on) {
@@ -2781,7 +3313,9 @@ function renderRange(mode, startGun) {
     fullBtn.addEventListener("click", function (e) { e.stopPropagation(); setFull(!field.classList.contains("is-full")); });
     fullBtn.addEventListener("pointerdown", function (e) { e.stopPropagation(); });
     document.addEventListener("fullscreenchange", function () { if (!document.fullscreenElement && field.classList.contains("is-full")) setFull(false); });
-    field.appendChild(fullBtn);
+    tools.appendChild(sensBtn);
+    tools.appendChild(fullBtn);
+    field.appendChild(tools);
     fieldFullOff = function () { if (field.classList.contains("is-full")) setFull(false); };
   }
   field.addEventListener("contextmenu", function (e) { e.preventDefault(); });
@@ -3414,6 +3948,12 @@ function renderRange(mode, startGun) {
     const dt = Math.min(50, t - (lastFrame || t));
     lastFrame = t;
     const k = dt / 16.7;
+    if (stickX || stickY) {
+      const sp = 9 * k * SENS_RATE[touchSens] / 2.4 / zoom;
+      cam.x += stickX * Math.abs(stickX) * sp;
+      cam.y += stickY * Math.abs(stickY) * sp;
+      clampCam();
+    }
     const decay = Math.pow(0.93, k);
     rx *= decay;
     ry *= decay;
@@ -3559,8 +4099,8 @@ function renderRange(mode, startGun) {
   field.addEventListener("pointermove", function (e) {
     if (coarse) {
       if (e.pointerId !== dragId) return;
-      cam.x += (e.clientX - lastX) * 0.8 / zoom;
-      cam.y += (e.clientY - lastY) * 0.8 / zoom;
+      cam.x += (e.clientX - lastX) * SENS_RATE[touchSens] / zoom;
+      cam.y += (e.clientY - lastY) * SENS_RATE[touchSens] / zoom;
       lastX = e.clientX; lastY = e.clientY;
       clampCam();
     } else if (fallbackMode && !locked) {
@@ -3655,6 +4195,32 @@ function setupReveal() {
   });
 }
 
+// 深色模式：預設跟著系統，按鈕可手動切換，選擇會記在這個瀏覽器
+function setupTheme() {
+  const btn = document.getElementById("theme-toggle");
+  if (!btn) return;
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const isDark = function () {
+    const t = document.documentElement.dataset.theme;
+    return t ? t === "dark" : mq.matches;
+  };
+  const sync = function () {
+    btn.textContent = isDark() ? "淺色" : "深色";
+    btn.setAttribute("aria-label", isDark() ? "切換成淺色模式" : "切換成深色模式");
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", isDark() ? "#0E1B24" : "#17303F");
+  };
+  btn.addEventListener("click", function () {
+    const next = isDark() ? "light" : "dark";
+    document.documentElement.dataset.theme = next;
+    try { localStorage.setItem("arsenal-theme", next); } catch (e) {}
+    sync();
+  });
+  if (mq.addEventListener) mq.addEventListener("change", sync);
+  sync();
+}
+
+setupTheme();
 setupReveal();
 setupReticle();
 window.addEventListener("hashchange", route);

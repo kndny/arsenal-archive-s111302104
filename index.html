@@ -12,8 +12,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&family=Noto+Serif+TC:wght@700&family=Doto:wght@400..900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/template.css">
+  <script>try { var t = localStorage.getItem("arsenal-theme"); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+    // 動態效果：使用者自己選過就照選擇（arsenal-motion = on / off），沒選過就照系統的「減少動態」設定
+    try { var m = localStorage.getItem("arsenal-motion"); } catch (e) {}
+    document.documentElement.dataset.motion = m || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "off" : "on");
+    try { if (sessionStorage.getItem("arsenal-boot")) document.documentElement.classList.add("no-boot"); else sessionStorage.setItem("arsenal-boot", "1"); } catch (e) {}</script>
 </head>
 <body>
+
+  <!-- 開場讀取畫面：每次開啟網站只出現一次，純 CSS 動畫，點一下可以跳過 -->
+  <div id="boot" aria-hidden="true"><div class="boot-in"><p class="boot-word">ARSENAL<br>ARCHIVE</p><div class="boot-bar"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i><i style="--i:9"></i><i style="--i:10"></i><i style="--i:11"></i><i style="--i:12"></i><i style="--i:13"></i><i style="--i:14"></i><i style="--i:15"></i></div><p class="boot-label">LOADING FILES</p></div></div>
 
   <!-- 頁首：data-route 讓 JS 知道目前在哪一頁，並標示導覽列 -->
   <header class="site-header">
@@ -27,12 +35,15 @@
       <a href="#/catalog" data-route="catalog">槍種圖鑑</a>
       <a href="#/table" data-route="table">篩選比較表</a>
       <a href="#/calibers" data-route="calibers">口徑對照</a>
+      <a href="#/showcase" data-route="showcase">3D 展示</a>
       <a href="#/games" data-route="games">遊戲</a>
       <a href="#/favorites" data-route="favorites">收藏<span class="badge" id="fav-count" hidden></span></a>
     </nav>
+    <button type="button" class="theme-toggle" id="theme-toggle">深色</button>
   </header>
 
   <main>
+    <div class="file-status" id="status-bar" hidden></div>
 
     <!-- 畫面一：首頁 -->
     <section class="view" id="view-home">
@@ -44,7 +55,10 @@
             <li><span class="num" id="stat-types">06</span>槍種</li>
           </ul>
         </div>
-        <button class="hero-art" id="hero-art" type="button" aria-label="切換槍種圖示"><span class="hero-art-gun" id="hero-art-gun"></span><span class="hero-art-label" id="hero-art-label"></span></button>
+        <div class="hero-art" id="hero-art">
+          <canvas class="hero-dots" id="hero-dots" role="img" aria-label="圓點組成的槍。點一下換下一把槍。"></canvas>
+          <div class="hero-art-bar"><p class="hero-art-label" id="hero-art-label"></p><button class="btn" id="hero-next" type="button">換一把</button></div>
+        </div>
         <h1>槍械檔案館</h1>
         <p>整理六大槍種的經典槍械，可依槍種、國家或口徑瀏覽與比較。</p>
         <div class="actions">
@@ -68,7 +82,10 @@
       <div class="home-section">
         <h2>世界地圖</h2>
         <p class="map-hint">亮起的點是此網站有收錄槍枝的國家，點一下即可查看該國家的槍。</p>
-        <div class="world-map" id="world-map"></div>
+        <div class="map-stage">
+          <div class="world-map" id="world-map"></div>
+          <div class="map-panel" id="map-panel" aria-live="polite"></div>
+        </div>
         <div class="map-time">
           <button class="map-chip" id="map-play" type="button">播放</button>
           <label class="map-time-label" for="map-year">年份</label>
@@ -81,7 +98,6 @@
           <summary id="map-chips-title">國家列表</summary>
           <div class="map-chips" id="map-chips"></div>
         </details>
-        <div class="map-panel" id="map-panel" aria-live="polite"></div>
       </div>
 
       <!-- 槍械簡史（內容由 main.js 產生） -->
@@ -179,6 +195,14 @@
       <div id="range-app"></div>
     </section>
 
+    <!-- 畫面十三：3D 展示 -->
+    <section class="view" id="view-showcase" hidden>
+      <div class="page-title">
+        <h1>3D 展示</h1>
+      </div>
+      <div id="showcase-body"></div>
+    </section>
+
     <!-- 畫面十二：口徑對照 -->
     <section class="view" id="view-calibers" hidden>
       <div class="page-title">
@@ -228,9 +252,13 @@
     <p>資料來源：公開的歷史與規格資料。本站為課堂作業，非商業用途。圖片皆取自網路，僅供學習展示，版權屬原作者所有。如有疑慮，將立即移除。</p>
   </footer>
 
+  <script src="js/dotdata.js"></script>
   <script src="js/gunextra.js"></script>
   <script src="js/calibers.js"></script>
   <script src="js/defense.js"></script>
+  <script src="js/showcase.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/fx.js"></script>
+  <script src="js/feel.js"></script>
 </body>
 </html>
