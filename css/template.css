@@ -1641,3 +1641,13 @@ td:first-child { padding-left: 0.75rem; }
 .map-gun-card img { object-fit: contain; padding: 0.35rem; box-sizing: border-box; background: #fff; }
 /* 收藏的徽章出現時導覽列也維持一排 */
 @media (min-width: 901px) { .site-search { flex: 1 1 4rem; min-width: 4rem; } }
+
+/* ===== 觸控裝置（手機、平板）：沒有滑鼠「滑過」，按住卡片時不顯示 hover 的反白、黃色光斑與浮起 ===== */
+@media (hover: none) {
+  .card:hover { background: transparent; color: inherit; box-shadow: none; --ty: 0px; }
+  .card:hover .dm { border-color: var(--ink); }
+  .card:hover .file-no { color: inherit; opacity: 0.6; }
+  .card::after, .card:hover::after { display: none; }
+  /* 長按照片時不跳出「儲存圖片」選單，也不會選取到圖片 */
+  .dm img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+}
