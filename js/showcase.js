@@ -382,8 +382,8 @@ function renderShowcase(typeId) {
       if (!p.acc) return;
       const b = el("button", "map-chip", p.name);
       b.type = "button"; b.setAttribute("aria-pressed", "false");
-      b.addEventListener("mouseenter", function () { if (p.on) { hover = i; setInfo(); } });
-      b.addEventListener("mouseleave", function () { hover = -1; setInfo(); });
+      b.addEventListener("pointerenter", function (e) { if (e.pointerType === "mouse" && p.on) { hover = i; setInfo(); } });
+      b.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") { hover = -1; setInfo(); } });
       b.addEventListener("click", function () {
         p.on = !p.on;
         if (reduced) p.t = p.on ? 1 : 0;
@@ -395,10 +395,12 @@ function renderShowcase(typeId) {
       if (p.acc) return;
       const b = el("button", "map-chip", no(i + 1) + " " + p.name);
       b.type = "button";
-      b.addEventListener("mouseenter", function () { hover = i; setInfo(); });
-      b.addEventListener("mouseleave", function () { hover = -1; setInfo(); });
-      b.addEventListener("focus", function () { hover = i; setInfo(); });
-      b.addEventListener("blur", function () { hover = -1; setInfo(); });
+      // 「滑過就預覽」只給滑鼠和鍵盤用。手機點一下時，瀏覽器也會送出「滑過」，
+      // 說明文字一改變，按鈕就被擠到別的位置，那一下點擊就落空了（看起來像要等好幾秒才按得到）
+      b.addEventListener("pointerenter", function (e) { if (e.pointerType === "mouse") { hover = i; setInfo(); } });
+      b.addEventListener("pointerleave", function (e) { if (e.pointerType === "mouse") { hover = -1; setInfo(); } });
+      b.addEventListener("focus", function () { if (b.matches(":focus-visible")) { hover = i; setInfo(); } });
+      b.addEventListener("blur", function () { if (hover === i) { hover = -1; setInfo(); } });
       b.addEventListener("click", function () { lock = lock === i ? -1 : i; setInfo(); });
       list.appendChild(b); chipBtns[i] = b;
     });
