@@ -326,6 +326,8 @@ function renderShowcase(typeId) {
   function fitInfo() {
     if (!model || !info.isConnected) return;
     info.style.minHeight = "";
+    // 只有電腦（有滑鼠、左右版面）才需要固定高度；手機是用點的，不會因為滑過而跳動，就不留空白
+    if (!window.matchMedia("(hover: hover) and (min-width: 901px)").matches) { setInfo(); return; }
     let max = 0;
     for (let i = -1; i < model.parts.length; i++) { fillInfo(i); max = Math.max(max, info.offsetHeight); }
     info.style.minHeight = max + "px";

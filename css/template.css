@@ -1644,10 +1644,28 @@ td:first-child { padding-left: 0.75rem; }
 
 /* ===== 觸控裝置（手機、平板）：沒有滑鼠「滑過」，按住卡片時不顯示 hover 的反白、黃色光斑與浮起 ===== */
 @media (hover: none) {
+  /* 手機點按鈕後，瀏覽器會讓按鈕一直停在「滑過」的深色樣子，看不出現在是開還是關。
+     所以觸控裝置上，按鈕只用「開／關狀態」（aria-pressed）決定顏色，不使用滑過的樣式 */
+  .map-chip:hover:not([aria-pressed="true"]), .range-weapon:hover:not([aria-pressed="true"]),
+  .theme-toggle:hover:not([aria-pressed="true"]), .pixel-btn:hover:not(:disabled), .btn:hover:not(.btn-primary):not(.on) { background: var(--paper); color: var(--ink); }
+  .btn-primary:hover { background: var(--signal); color: var(--on-signal, #17303F); }
+  .map-chip:active, .range-weapon:active, .theme-toggle:active, .btn:active { transform: translate(1px, 1px); }
   .card:hover { background: transparent; color: inherit; box-shadow: none; --ty: 0px; }
   .card:hover .dm { border-color: var(--ink); }
   .card:hover .file-no { color: inherit; opacity: 0.6; }
   .card::after, .card:hover::after { display: none; }
   /* 長按照片時不跳出「儲存圖片」選單，也不會選取到圖片 */
   .dm img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+}
+
+/* ===== 試射場、防線：手機直拿時畫面比較矮，按鈕跟搖桿縮小，不要蓋住靶 ===== */
+@media (orientation: portrait) and (pointer: coarse) {
+  .range-touch .range-touch-btn { width: 52px; height: 52px; border-width: 2px; box-shadow: 2px 2px 0 var(--ink); }
+  .range-touch .range-touch-btn.fire { width: 72px; height: 72px; font-size: var(--fs-body); }
+  .range-touch .fire.right { right: 0.6rem; bottom: 0.6rem; }
+  .range-touch .ads { right: calc(0.6rem + 72px + 0.4rem); bottom: 0.6rem; }
+  .range-touch .reload { right: 0.7rem; bottom: calc(0.6rem + 72px + 0.4rem); }
+  .range-touch .swap { right: calc(0.7rem + 52px + 0.4rem); bottom: calc(0.6rem + 72px + 0.4rem); }
+  .range-stick { left: 0.6rem; bottom: 0.6rem; width: 96px; height: 96px; border-width: 2px; }
+  .range-stick-knob { width: 42px; height: 42px; border-width: 2px; }
 }

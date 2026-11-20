@@ -3210,7 +3210,7 @@ function renderRange(mode, startGun) {
   const lockMsg = el("div", "range-lockmsg");
   const lockCard = el("div", "range-lockcard");
   const lockTitle = el("h2", "", "準備好了嗎？");
-  const lockText = el("p", "", "左鍵開火　右鍵開鏡　R 裝填　滾輪換槍　Esc 放開滑鼠");
+  const lockText = el("p", "", coarse ? "左下搖桿移動準心　右下「開火」射擊　旁邊可以開鏡、裝填、換槍" : "左鍵開火　右鍵開鏡　R 裝填　滾輪換槍　Esc 放開滑鼠");
   const lockBtn = el("button", "btn", "開始瞄準");
   lockBtn.type = "button";
   const lockExit = el("a", "back-link", "回到遊戲");
@@ -3328,7 +3328,10 @@ function renderRange(mode, startGun) {
     cycleGun(dy > 0 ? 1 : -1, e.shiftKey);
   }, { passive: false });
   box.appendChild(field);
-  box.appendChild(el("p", "range-hint", DEF ? "滾輪切換槍種，Shift＋滾輪切換槍款。" : "開槍時會模擬後座力，視角會往上跳，要用滑鼠壓回來。中間的虛線圓是子彈會落的範圍。右鍵開鏡：視野變窄、散布變小。滾輪切換槍種，Shift＋滾輪切換槍款。"));
+  // 手機和電腦的操作說明不同；手機直拿時畫面較小，建議橫放或全螢幕
+  box.appendChild(el("p", "range-hint", coarse
+    ? "左下的搖桿移動準心，右下按「開火」射擊。開槍會有後座力，準心會往上跳，要拉回來。手機橫放或按「全螢幕」玩起來會更順手。"
+    : (DEF ? "滾輪切換槍種，Shift＋滾輪切換槍款。" : "開槍時會模擬後座力，視角會往上跳，要用滑鼠壓回來。中間的虛線圓是子彈會落的範圍。右鍵開鏡：視野變窄、散布變小。滾輪切換槍種，Shift＋滾輪切換槍款。")));
 
   // ===== 資料面板 =====
   const panels = el("div", "range-panels");

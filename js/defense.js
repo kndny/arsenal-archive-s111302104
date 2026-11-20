@@ -1184,7 +1184,10 @@ function createDefense(ctx) {
   function showIntro() {
     showPanel("防線",
       ["擋住一波波敵人。打中身上的圓形靶心，傷害 ×3。",
-       "左鍵開火　右鍵開鏡　R 裝填　滾輪換槍　Esc 暫停"],
+       // 手機沒有滑鼠鍵盤，改成說明畫面上的按鈕
+       window.matchMedia("(pointer: coarse)").matches
+         ? "左下搖桿移動準心　右下「開火」射擊　旁邊可以開鏡、裝填、換槍"
+         : "左鍵開火　右鍵開鏡　R 裝填　滾輪換槍　Esc 暫停"],
       "開始", go, null, true);
   }
   showIntro();
