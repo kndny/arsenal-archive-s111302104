@@ -1649,6 +1649,9 @@ td:first-child { padding-left: 0.75rem; }
   .map-chip:hover:not([aria-pressed="true"]), .range-weapon:hover:not([aria-pressed="true"]),
   .theme-toggle:hover:not([aria-pressed="true"]), .pixel-btn:hover:not(:disabled), .btn:hover:not(.btn-primary):not(.on) { background: var(--paper); color: var(--ink); }
   .btn-primary:hover { background: var(--signal); color: var(--on-signal, #17303F); }
+  /* 已收藏、已加入比較的按鈕：按完維持黃色底，看得出是「開」的狀態 */
+  .btn.on:hover, .fav-btn.btn.on:hover, .cmp-btn.on:hover, .fav-btn.on:not(.btn):hover { background: var(--signal); color: var(--on-signal, #17303F); }
+  .fav-btn:not(.btn):not(.on):hover { background: var(--paper); color: var(--ink); }
   .map-chip:active, .range-weapon:active, .theme-toggle:active, .btn:active { transform: translate(1px, 1px); }
   .card:hover { background: transparent; color: inherit; box-shadow: none; --ty: 0px; }
   .card:hover .dm { border-color: var(--ink); }
@@ -1672,3 +1675,30 @@ td:first-child { padding-left: 0.75rem; }
 
 /* 術語提示框：由 JS 算出往左挪多少（--tx），不會超出畫面 */
 .term-hint::after { transform: translateX(var(--tx, 0px)); box-sizing: border-box; text-align: left; }
+
+/* ===== 手機首頁的收合區塊（feel.js 的 homeFolds） ===== */
+.fold-btn { all: unset; display: inline-flex; align-items: center; gap: 0.5rem; cursor: default; }
+.fold-sign { display: none; }
+@media (max-width: 720px) {
+  .fold { border-bottom: 1px dotted var(--line); padding-bottom: 1rem; }
+  .fold-btn { display: flex; width: 100%; justify-content: space-between; cursor: pointer; }
+  .fold-btn:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
+  .fold-sign { display: inline-block; font-family: var(--font-dot); font-weight: 900; }
+  .fold-sign::before { content: "+"; }
+  .fold.open .fold-sign::before { content: "−"; }
+  .fold:not(.open) > :not(.fold-head) { display: none; }
+  .fold:not(.open) .timeline-nav { display: none; }
+  .fold .fold-head h2, .fold h2.fold-head { margin-bottom: 0; }
+  .fold.open .fold-head h2, .fold.open h2.fold-head { margin-bottom: 1rem; }
+  .timeline-head.fold-head h2 { flex: 1; }
+}
+@media (max-width: 720px) {
+  .home-section.fold, .timeline-section.fold { padding-top: 1.25rem; margin-top: 0; }
+}
+/* 手機首頁的入口：兩個一排，只留圖示和名稱，說明文字收起來 */
+@media (max-width: 560px) {
+  .home-section #quick-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .home-section #quick-tiles li:last-child { grid-column: 1 / -1; }
+  .home-section #quick-tiles .desc, .home-section #quick-tiles .examples { display: none; }
+  .home-section #quick-tiles a { padding: 0.9rem; }
+}
