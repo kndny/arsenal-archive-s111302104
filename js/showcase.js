@@ -203,13 +203,16 @@ function showCycleCurve(t) {
 function showPhaseIndex(t) { return t < 0.05 ? 0 : (t < 0.35 ? 1 : (t < 0.7 ? 2 : 3)); }
 
 /* 組出整個模型：置中、算每個零件的分解方向 */
+// 手機（觸控）效能比較弱：圓點間距放大 1.35 倍，點的數量少將近一半，畫起來比較順
+const SHOW_LITE = window.matchMedia("(pointer: coarse)").matches;
 function showBuild(typeId) {
   const m = SHOW_MODELS[typeId];
+  const gap = m.gap * (SHOW_LITE ? 1.35 : 1);
   const parts = m.parts.map(function (p, i) {
-    return { idx: i, name: p.name, en: p.en, desc: p.desc, pts: showSamplePart(p, m.gap), off: [0, 0, 0], acc: false };
+    return { idx: i, name: p.name, en: p.en, desc: p.desc, pts: showSamplePart(p, gap), off: [0, 0, 0], acc: false };
   });
   (SHOW_ACC[typeId] || []).forEach(function (a) {
-    parts.push({ idx: parts.length, name: a.name, en: a.en, desc: a.desc, trade: a.trade, pts: showSamplePart(a, m.gap), off: [0, 0, 0], acc: true, aid: a.id, on: false, t: 0 });
+    parts.push({ idx: parts.length, name: a.name, en: a.en, desc: a.desc, trade: a.trade, pts: showSamplePart(a, gap), off: [0, 0, 0], acc: true, aid: a.id, on: false, t: 0 });
   });
   const nBase = m.parts.length;
   let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
@@ -237,7 +240,7 @@ function showBuild(typeId) {
     rxz = Math.max(rxz, Math.hypot(q.x, q.z)); ry = Math.max(ry, Math.abs(q.y));
     rxzE = Math.max(rxzE, Math.hypot(q.x + o[0], q.z + o[2])); ryE = Math.max(ryE, Math.abs(q.y + o[1]));
   });
-  return { cx: cx, cy: cy, parts: parts, nBase: nBase, pts: total, rxz: rxz, ry: ry, rxzE: rxzE, ryE: ryE, gap: m.gap };
+  return { cx: cx, cy: cy, parts: parts, nBase: nBase, pts: total, rxz: rxz, ry: ry, rxzE: rxzE, ryE: ryE, gap: gap };
 }
 
 /* ---------- 畫面 ---------- */
@@ -447,6 +450,8 @@ function renderShowcase(typeId) {
     for (let i = 0; i < n; i++) {
       const q = pts[i], o = model.parts[q.part].off;
       const pt = model.parts[q.part];
+      // 沒開啟的配件不用算（省下手機的計算量）
+      if (pt.acc && pt.t <= 0) { const d0 = (proj[i] = proj[i] || {}); d0.b = 0; d0.front = false; d0.part = q.part; continue; }
       let bi = pt.acc ? Math.min(1, Math.max(0, (pt.t - q.dl * 0.5) / 0.5)) : (reduced ? 1 : Math.min(1, Math.max(0, (built - q.dl) / 0.4)));
       bi = 1 - Math.pow(1 - bi, 3);
       const f = 1 - bi;
@@ -521,7 +526,9 @@ function renderShowcase(typeId) {
       ctx.globalAlpha = alpha; ctx.fillStyle = color; ctx.beginPath();
       for (let i = 0; i < arr.length; i++) {
         const d = arr[i], r = Math.max(0.2, base * mul * Math.max(0.3, 1 + 0.4 * d.z / R) * d.b);
-        ctx.moveTo(d.x + r, d.y); ctx.arc(d.x, d.y, r, 0, 6.2832);
+        // 很小的點（手機上常見）畫成小方塊，肉眼看起來一樣是圓點，但畫得快很多
+        if (SHOW_LITE && r < 1.6) ctx.rect(d.x - r, d.y - r, r * 2, r * 2);
+        else { ctx.moveTo(d.x + r, d.y); ctx.arc(d.x, d.y, r, 0, 6.2832); }
       }
       ctx.fill();
     };
@@ -571,7 +578,7 @@ function renderShowcase(typeId) {
     const r = cv.getBoundingClientRect();
     if (!r.width) return;
     W = r.width; H = r.height;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, SHOW_LITE ? 1.5 : 2);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     readColors();
