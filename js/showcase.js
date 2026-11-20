@@ -203,11 +203,11 @@ function showCycleCurve(t) {
 function showPhaseIndex(t) { return t < 0.05 ? 0 : (t < 0.35 ? 1 : (t < 0.7 ? 2 : 3)); }
 
 /* 組出整個模型：置中、算每個零件的分解方向 */
-// 手機（觸控）效能比較弱：圓點間距放大 1.35 倍，點的數量少將近一半，畫起來比較順
+// 效能：手機圓點間距放大 1.35 倍（點少將近一半），電腦放大 1.2 倍（點少三成），畫起來比較順
 const SHOW_LITE = window.matchMedia("(pointer: coarse)").matches;
 function showBuild(typeId) {
   const m = SHOW_MODELS[typeId];
-  const gap = m.gap * (SHOW_LITE ? 1.35 : 1);
+  const gap = m.gap * (SHOW_LITE ? 1.35 : 1.2);   // 電腦也稍微放寬，內顯比較跑得動
   const parts = m.parts.map(function (p, i) {
     return { idx: i, name: p.name, en: p.en, desc: p.desc, pts: showSamplePart(p, gap), off: [0, 0, 0], acc: false };
   });
@@ -291,6 +291,7 @@ function renderShowcase(typeId) {
 
   const reduced = reduceMotion();
   let model = null, ctx = null, W = 0, H = 0;
+  let sliderAt = 0;
   let phase = 0, playing = false, cycView = false, lastPhaseIdx = -1;
   let tr = { ca: 1, sa: 0, cb: 1, sb: 0, scale: 1, cx: 0, cy: 0 };
   let yaw = -0.55, pitch = 0.16, explode = 0, explodeTarget = 0, built = reduced ? 1 : 0;
@@ -537,16 +538,19 @@ function renderShowcase(typeId) {
     fillGroup(groups.back, colors.ink, 0.16, 0.8);
     fillGroup(groups.dim, colors.ink, 0.3, 1);
     fillGroup(groups.front, colors.ink, 1, 1);
-    if (groups.mover.length) {
-      ctx.globalAlpha = 1; ctx.strokeStyle = colors.ink; ctx.lineWidth = 1; ctx.fillStyle = colors.signal; ctx.beginPath();
-      groups.mover.forEach(function (d) { const r = Math.max(0.3, base * 1.15 * Math.max(0.3, 1 + 0.4 * d.z / R)); ctx.moveTo(d.x + r, d.y); ctx.arc(d.x, d.y, r, 0, 6.2832); });
-      ctx.fill(); ctx.stroke();
-    }
+    // 黃色點加深色外框：先畫大一點的深色點，再疊上黃色點（比描邊省效能很多）
+    const ringed = function (arr, mul, ring) {
+      if (!arr.length) return;
+      ctx.globalAlpha = 1;
+      [[colors.ink, ring], [colors.signal, 0]].forEach(function (layer) {
+        ctx.fillStyle = layer[0]; ctx.beginPath();
+        arr.forEach(function (d) { const r = Math.max(0.3, base * mul * Math.max(0.3, 1 + 0.4 * d.z / R)) + layer[1]; ctx.moveTo(d.x + r, d.y); ctx.arc(d.x, d.y, r, 0, 6.2832); });
+        ctx.fill();
+      });
+    };
+    ringed(groups.mover, 1.15, 1);
     if (groups.hot.length) {
-      ctx.globalAlpha = 1; ctx.strokeStyle = colors.ink; ctx.lineWidth = 1.2;
-      ctx.fillStyle = colors.signal; ctx.beginPath();
-      groups.hot.forEach(function (d) { const r = Math.max(0.3, base * 1.25 * Math.max(0.3, 1 + 0.4 * d.z / R)); ctx.moveTo(d.x + r, d.y); ctx.arc(d.x, d.y, r, 0, 6.2832); });
-      ctx.fill(); ctx.stroke();
+      ringed(groups.hot, 1.25, 1.2);
       // 名稱標籤
       let sx = 0, sy = 0;
       groups.hot.forEach(function (d) { sx += d.x; sy += d.y; });
@@ -580,7 +584,7 @@ function renderShowcase(typeId) {
     const r = cv.getBoundingClientRect();
     if (!r.width) return;
     W = r.width; H = r.height;
-    const dpr = Math.min(window.devicePixelRatio || 1, SHOW_LITE ? 1.5 : 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
     ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     readColors();
@@ -639,7 +643,8 @@ function renderShowcase(typeId) {
     } else explode = explodeTarget;
     if (playing) {
       phase = (phase + dt / 3600) % 1;
-      slider.value = String(Math.round(phase * 1000));
+      // 滑桿每秒更新約 10 次就夠了；每一格都更新，瀏覽器要一直重排版面
+      if (now - sliderAt > 100) { sliderAt = now; slider.value = String(Math.round(phase * 1000)); }
       if (showPhaseIndex(phase) !== lastPhaseIdx) setPhaseText();
     }
     { const sc = showCycleCurve(phase), mv = moveRefs(); model.parts.forEach(function (p) { p.mv = 0; p.mover = false; }); const c = SHOW_CYCLE[showType]; if (c) mv.forEach(function (p) { p.mv = c.dx * sc; p.mover = true; }); }
