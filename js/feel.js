@@ -62,6 +62,34 @@
     tools.parentNode.insertBefore(btn, tools);
   })();
 
+  /* ---------- 手機首頁：比較長的區塊預設收起，點標題展開 ----------
+     電腦版不受影響（收起的樣式只在 720px 以下生效）。 */
+  (function homeFolds() {
+    const names = ["世界地圖", "槍械簡史", "術語說明", "資料統計"];
+    document.querySelectorAll("#view-home h2").forEach(function (h2) {
+      if (names.indexOf(h2.textContent.trim()) < 0) return;
+      const sec = h2.closest(".home-section, .timeline-section");
+      if (!sec) return;
+      const head = h2.parentElement === sec ? h2 : h2.parentElement;   // 槍械簡史的標題外面還包了一層
+      sec.classList.add("fold");
+      head.classList.add("fold-head");
+      const btn = document.createElement("button");
+      btn.type = "button"; btn.className = "fold-btn";
+      btn.setAttribute("aria-expanded", "false");
+      btn.textContent = h2.textContent;
+      const sign = document.createElement("span"); sign.className = "fold-sign"; sign.setAttribute("aria-hidden", "true");
+      btn.appendChild(sign);
+      h2.replaceChildren(btn);
+      btn.addEventListener("click", function () {
+        const open = !sec.classList.contains("open");
+        sec.classList.toggle("open", open);
+        btn.setAttribute("aria-expanded", String(open));
+        // 展開後讓地圖、時間軸重新量一次寬度
+        window.dispatchEvent(new Event("resize"));
+      });
+    });
+  })();
+
   /* ---------- 2. 音效 ---------- */
   (function sound() {
     const KEY = "arsenal-sound";
