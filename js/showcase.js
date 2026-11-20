@@ -579,6 +579,9 @@ function renderShowcase(typeId) {
     if (W !== lastFitW) { lastFitW = W; fitInfo(); }
   }
 
+  // 一碰到模型或任何按鈕，就直接跳過開場的「圓點聚合」動畫，零件馬上可以點
+  lab.addEventListener("pointerdown", function () { built = 1.6; }, true);
+  lab.addEventListener("keydown", function () { built = 1.6; }, true);
   cv.addEventListener("pointerdown", function (e) {
     dragging = true; moved = 0; lastX = e.clientX; lastY = e.clientY;
     try { cv.setPointerCapture(e.pointerId); } catch (err) { /* 忽略 */ }
@@ -616,7 +619,7 @@ function renderShowcase(typeId) {
     const dt = Math.min(50, now - last); last = now;
     if ((colors.t = (colors.t + 1) % 90) === 0) readColors();
     if (!reduced) {
-      built = Math.min(1.6, built + dt / 900);
+      built = Math.min(1.6, built + dt / 600);
       if (cycView) {
         // 看射擊循環時，鏡頭慢慢轉到側面，比較看得出零件前後移動
         yaw = ((yaw + Math.PI) % 6.2832 + 6.2832) % 6.2832 - Math.PI;
