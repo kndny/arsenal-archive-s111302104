@@ -1702,3 +1702,25 @@ td:first-child { padding-left: 0.75rem; }
   .home-section #quick-tiles .desc, .home-section #quick-tiles .examples { display: none; }
   .home-section #quick-tiles a { padding: 0.9rem; }
 }
+
+/* 世界地圖放大後，左上角的「← 全圖」 */
+.world-map { position: relative; }
+.map-back-float { position: absolute; left: 0.5rem; top: 0.5rem; z-index: 2; display: none; padding: 0.2rem 0.6rem; min-height: 0; box-shadow: 2px 2px 0 var(--ink); }
+.world-map.is-zoomed .map-back-float { display: inline-flex; }
+
+/* 手機：地圖高一點（點比較大），左右拖曳看其他地區；放大後可以往任何方向拖 */
+@media (max-width: 720px) {
+  .world-map svg { height: min(78vw, 340px); touch-action: pan-y; }
+  .world-map.is-zoomed svg { touch-action: none; }
+  .map-stage .map-guns { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  .map-stage .map-panel { margin-top: 0; }
+}
+.world-map.can-pan svg { cursor: grab; }
+.world-map.is-dragging svg { cursor: grabbing; }
+.world-map .map-drag-hint { display: none; }
+
+/* 跑馬燈：可以自己左右滑（main.js 的 marqueeScroll 負責自動捲動） */
+.marquee.js-scroll { overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; cursor: grab; -webkit-user-select: none; user-select: none; }
+.marquee.js-scroll::-webkit-scrollbar { display: none; }
+.marquee.js-scroll .marquee-track { animation: none; }
+.marquee.js-scroll.is-dragging { cursor: grabbing; }
