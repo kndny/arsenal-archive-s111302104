@@ -2017,6 +2017,23 @@ function termText(parent, text) {
   parent.appendChild(document.createTextNode(text.slice(last)));
   return parent;
 }
+// 術語提示框預設從術語的左邊往右展開；術語靠近畫面右邊時（尤其是手機）會超出畫面。
+// 所以每次要顯示前，先量提示框的寬度，超出右邊就往左挪，最多挪到畫面左邊留 12px 的位置。
+function placeTermTip(e) {
+  const t = e.target && e.target.closest && e.target.closest(".term-hint");
+  if (!t) return;
+  t.style.setProperty("--tx", "0px");
+  const r = t.getBoundingClientRect();
+  const w = parseFloat(getComputedStyle(t, "::after").width) || 0;
+  const vw = document.documentElement.clientWidth, pad = 12;
+  let shift = Math.min(0, vw - pad - (r.left + w));
+  shift = Math.max(shift, pad - r.left);
+  t.style.setProperty("--tx", Math.round(shift) + "px");
+}
+document.addEventListener("pointerover", placeTermTip);
+document.addEventListener("focusin", placeTermTip);
+document.addEventListener("pointerdown", placeTermTip);
+
 // 圓點長條：總共 20 顆，亮幾顆代表比例，最後一顆亮黃色
 function dotBar(ratio, label) {
   const n = 20, lit = Math.max(1, Math.min(n, Math.round(ratio * n)));
@@ -3662,12 +3679,14 @@ function renderRange(mode, startGun) {
     paintStats();
   }
 
+  // 槍的大小跟著畫面大小走（手機轉向、進出全螢幕時也要重新算）
+  function gunPixel() { return Math.min(12, (field.clientWidth * 0.78) / FPS_W, (field.clientHeight * 0.92) / FPS_H); }
+  function sizeGun() { if (gun && gun.svg && field.clientWidth) gun.svg.style.width = Math.round(FPS_W * gunPixel()) + "px"; }
   function mountGun() {
     gunKick.replaceChildren();
     // 槍要大：占畫面寬度一半以上，高度不超過畫面的八成，右下角會被畫面邊緣切掉一點（像射擊遊戲）
     const spec = viewmodels[weaponId];
-    const pixel = Math.min(12, (field.clientWidth * 0.78) / FPS_W, (field.clientHeight * 0.92) / FPS_H);
-    gun = buildFpsGun(weaponId, pixel);
+    gun = buildFpsGun(weaponId, gunPixel());
     gunWrap.setAttribute("data-type", weaponId);
     gunKick.appendChild(gun.svg);
   }
@@ -4061,6 +4080,7 @@ function renderRange(mode, startGun) {
     fieldRO = new ResizeObserver(function () {
       const ui = Math.max(0.5, Math.min(1, field.clientWidth / 960, field.clientHeight / 560));
       field.style.setProperty("--ui", ui.toFixed(2));
+      sizeGun();
     });
     fieldRO.observe(field);
   }
