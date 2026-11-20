@@ -512,7 +512,8 @@ function renderShowcase(typeId) {
     const scale = project();
     ctx.clearRect(0, 0, W, H);
     const a = active();
-    const base = Math.max(0.8, scale * model.gap * 0.3);
+    // 圓點半徑上限 4.5px：手槍很小、放大倍率高，不設上限的話每個點都很大，畫起來特別吃效能
+    const base = Math.min(4.5, Math.max(0.8, scale * model.gap * 0.3));
     const R = Math.max(model.rxz, 1);
     const groups = { back: [], front: [], dim: [], hot: [], mover: [] };
     for (let i = 0; i < proj.length; i++) {
@@ -520,7 +521,7 @@ function renderShowcase(typeId) {
       if (d.b <= 0.01) continue;
       if (cycView && model.parts[d.part].mover && d.front && !(a >= 0 && d.part === a)) groups.mover.push(d);
       else if (a >= 0 && d.part === a) { if (d.front) groups.hot.push(d); else groups.back.push(d); }
-      else if (!d.front) groups.back.push(d);
+      else if (!d.front) { if (i % 2 === 0) groups.back.push(d); }   // 背面的點本來就很淡，只畫一半，省下重疊的繪圖
       else if (a >= 0) groups.dim.push(d);
       else groups.front.push(d);
     }
@@ -535,7 +536,7 @@ function renderShowcase(typeId) {
       }
       ctx.fill();
     };
-    fillGroup(groups.back, colors.ink, 0.16, 0.8);
+    fillGroup(groups.back, colors.ink, 0.2, 0.7);
     fillGroup(groups.dim, colors.ink, 0.3, 1);
     fillGroup(groups.front, colors.ink, 1, 1);
     // 黃色點加深色外框：先畫大一點的深色點，再疊上黃色點（比描邊省效能很多）
