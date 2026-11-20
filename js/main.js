@@ -921,7 +921,10 @@ function renderMap() {
   // 縮放：用動畫改變 SVG 的可視範圍，把選到的國家放大到畫面中央
   const FULL = [0, 0, colsN * CELL, rowsN * CELL];
   let vb = FULL.slice(), vbAnim = null, zoomed = false;
-  function setVB(v) { vb = v; svg.setAttribute("viewBox", v.map(function (n) { return n.toFixed(1); }).join(" ")); }
+  function setVB(v) {
+    vb = v; svg.setAttribute("viewBox", v.map(function (n) { return n.toFixed(1); }).join(" "));
+    box.classList.toggle("can-pan", v[2] < FULL[2] - 1 || v[3] < FULL[3] - 1);   // 看到的範圍比全圖小，才顯示可拖曳的游標
+  }
   function flyTo(target) {
     if (vbAnim) cancelAnimationFrame(vbAnim);
     if (reduceMotion()) { setVB(target); return; }
@@ -932,17 +935,35 @@ function renderMap() {
       vbAnim = k < 1 ? requestAnimationFrame(step) : null;
     })(t0);
   }
+  // 畫面的長寬比（手機上地圖比較高，所以看到的範圍會比全圖窄，可以左右拖曳）
+  function aspect() { return (svg.clientWidth || FULL[2]) / (svg.clientHeight || FULL[3]); }
+  // 把一個可視範圍限制在地圖裡面，不會拖到地圖外
+  function clampView(x, y, w, h) {
+    w = Math.min(w, FULL[2]); h = Math.min(h, FULL[3]);
+    return [Math.max(0, Math.min(FULL[2] - w, x)), Math.max(0, Math.min(FULL[3] - h, y)), w, h];
+  }
+  // 「全圖」：電腦上是整張地圖；手機上高度放滿，寬度依螢幕比例，中間對準歐洲附近
+  function baseView(cx) {
+    const a = aspect();
+    if (a >= FULL[2] / FULL[3] - 0.01) return FULL.slice();
+    const w = FULL[3] * a;
+    return clampView((cx === undefined ? FULL[2] * 0.5 : cx) - w / 2, 0, w, FULL[3]);
+  }
   function zoomIn(spot) {
     let sx = 0, sy = 0;
     spot.cells.forEach(function (rc) { sx += rc[1] * CELL + CELL / 2; sy += rc[0] * CELL + CELL / 2; });
     const cxs = sx / spot.cells.length, cys = sy / spot.cells.length;
-    const w = FULL[2] / (spot.r >= 3 ? 2.2 : 3), h = FULL[3] / (spot.r >= 3 ? 2.2 : 3);
-    flyTo([Math.max(0, Math.min(FULL[2] - w, cxs - w / 2)), Math.max(0, Math.min(FULL[3] - h, cys - h / 2)), w, h]);
+    const z = spot.r >= 3 ? 2.2 : 3;
+    // 面積和電腦版一樣，但長寬比跟著畫面，手機上才不會變形或留白
+    const area = (FULL[2] / z) * (FULL[3] / z), a = aspect();
+    let h = Math.sqrt(area / a), w = h * a;
+    if (h > FULL[3]) { h = FULL[3]; w = h * a; }
+    flyTo(clampView(cxs - w / 2, cys - h / 2, w, h));
     zoomed = true;
     box.classList.add("is-zoomed");
   }
   function zoomOut() {
-    flyTo(FULL.slice());
+    flyTo(baseView(vb[0] + vb[2] / 2));
     zoomed = false;
     box.classList.remove("is-zoomed");
     if (current) showPanel(current);
@@ -971,6 +992,40 @@ function renderMap() {
     groups.push({ spot: spot, group: group });
   });
   box.appendChild(svg);
+  // 放大後的出口：地圖左上角一顆「縮回全圖」，點地圖上沒有國家的空白處也會縮回去。
+  // （手機上放大後，原本只能捲到下方面板找按鈕，很容易卡在放大的畫面裡）
+  const backOnMap = el("button", "map-chip map-back-float", "← 全圖");
+  backOnMap.type = "button";
+  backOnMap.addEventListener("click", function (e) { e.stopPropagation(); zoomOut(); });
+  box.appendChild(backOnMap);
+  svg.addEventListener("click", function (e) { if (zoomed && !e.target.closest(".spot")) zoomOut(); });
+
+  // 拖曳地圖：看到的範圍比全圖小時（放大後，或手機上），可以用滑鼠或手指拖著移動
+  let drag = null, dragMoved = 0;
+  svg.addEventListener("pointerdown", function (e) {
+    if (vb[2] >= FULL[2] - 1 && vb[3] >= FULL[3] - 1) return;      // 已經是整張地圖，沒有東西可以拖
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    drag = { x: e.clientX, y: e.clientY, vb: vb.slice(), id: e.pointerId };
+    dragMoved = 0;
+  });
+  svg.addEventListener("pointermove", function (e) {
+    if (!drag || e.pointerId !== drag.id) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    dragMoved = Math.max(dragMoved, Math.abs(dx) + Math.abs(dy));
+    if (dragMoved < 6) return;
+    if (vbAnim) { cancelAnimationFrame(vbAnim); vbAnim = null; }
+    try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+    box.classList.add("is-dragging");
+    const k = drag.vb[2] / (svg.clientWidth || 1);                    // 1 個螢幕像素 = 多少地圖單位
+    setVB(clampView(drag.vb[0] - dx * k, drag.vb[1] - dy * k, drag.vb[2], drag.vb[3]));
+  });
+  function endDrag() { drag = null; box.classList.remove("is-dragging"); }
+  svg.addEventListener("pointerup", endDrag);
+  svg.addEventListener("pointercancel", endDrag);
+  // 拖曳結束時放開手指，不要被當成「點了國家」或「點了空白處」
+  svg.addEventListener("click", function (e) { if (dragMoved >= 6) { e.stopPropagation(); e.preventDefault(); dragMoved = 0; } }, true);
+  // 畫面大小改變（手機轉向等）時，沒有放大就重新套用「全圖」
+  if (window.ResizeObserver) new ResizeObserver(function () { if (!zoomed && !drag) setVB(baseView(vb[0] + vb[2] / 2)); }).observe(svg);
 
   // 地圖下方的按鈕列：給鍵盤與手機使用，也方便直接選國家
   shown.slice().sort(function (a, b) { return b.guns.length - a.guns.length; }).forEach(function (spot) {
@@ -2413,6 +2468,44 @@ document.getElementById("logo").appendChild(drawPixels(logoPixels, 12, 12));
 const marqueeText = "HG　SMG　AR　RF　MG　SG　".repeat(10);
 document.getElementById("marquee-a").textContent = marqueeText;
 document.getElementById("marquee-b").textContent = marqueeText;
+// 跑馬燈：改成可以用手指（或滑鼠拖曳、觸控板）自己左右滑的捲動列，沒人碰的時候自動慢慢往左跑。
+// 原本是 CSS 動畫，手機碰一下就會停住、要點別處才會繼續；現在放開 1.5 秒後就會自己繼續。
+(function marqueeScroll() {
+  const box = document.querySelector(".marquee"), a = document.getElementById("marquee-a");
+  if (!box || !a) return;
+  box.classList.add("js-scroll");
+  let holdUntil = 0, hover = false, last = 0, acc = 0, drag = null;
+  const hold = function (ms) { holdUntil = performance.now() + ms; };
+  const loopW = function () { return a.offsetWidth || 1; };   // 兩段一模一樣的文字，捲過一段就跳回來，看起來是無限循環
+  box.addEventListener("scroll", function () {
+    const w = loopW();
+    if (box.scrollLeft >= w) box.scrollLeft -= w;
+    else if (box.scrollLeft <= 0) box.scrollLeft += w;
+  }, { passive: true });
+  box.addEventListener("touchstart", function () { hold(1e9); }, { passive: true });
+  box.addEventListener("touchend", function () { hold(1500); }, { passive: true });
+  box.addEventListener("wheel", function () { hold(1500); }, { passive: true });
+  box.addEventListener("mouseenter", function () { hover = true; });
+  box.addEventListener("mouseleave", function () { hover = false; drag = null; });
+  // 電腦：按住滑鼠左右拖
+  box.addEventListener("pointerdown", function (e) {
+    if (e.pointerType !== "mouse") return;
+    drag = { x: e.clientX, left: box.scrollLeft };
+    box.classList.add("is-dragging");
+  });
+  window.addEventListener("pointermove", function (e) { if (drag) box.scrollLeft = drag.left - (e.clientX - drag.x); });
+  window.addEventListener("pointerup", function () { if (drag) { drag = null; box.classList.remove("is-dragging"); hold(800); } });
+  function step(now) {
+    const dt = last ? Math.min(50, now - last) : 0; last = now;
+    if (!reduceMotion() && !hover && !drag && now > holdUntil && box.offsetParent !== null) {
+      acc += dt * loopW() / 40000;            // 40 秒跑完一段，和原本的速度一樣
+      if (acc >= 1) { const n = Math.floor(acc); acc -= n; box.scrollLeft += n; }
+    }
+    requestAnimationFrame(step);
+  }
+  box.scrollLeft = 1;
+  requestAnimationFrame(step);
+})();
 document.getElementById("stat-guns").textContent = String(guns.length).padStart(2, "0");
 document.getElementById("stat-types").textContent = String(gunTypes.length).padStart(2, "0");
 
