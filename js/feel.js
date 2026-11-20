@@ -117,7 +117,7 @@
     if (typeof DOTDATA === "undefined") return;
     document.addEventListener("pointerover", function (e) {
       if (e.pointerType !== "mouse" || reduced() || !fine() || !e.target.closest) return;
-      const dm = e.target.closest(".card .dm");
+      const dm = e.target.closest(".card .dm:not(.still)");
       if (!dm || dm.classList.contains("fx-live")) return;
       const card = dm.closest(".card");
       const id = card && (card.getAttribute("href") || "").split("/").pop();

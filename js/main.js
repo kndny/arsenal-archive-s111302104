@@ -609,35 +609,32 @@ function artPlaceholder(typeId) {
 }
 
 /* ---------- 槍枝照片 ----------
-   照片放在 images/ 資料夾，檔名用槍枝代號，例如 images/ak47.jpg（也可以是 .png）。
-   找不到圖片檔時，會自動換成像素槍預設圖，版面不會壞掉，所以可以一張一張慢慢補。 */
+   照片放在 images/photos/ 資料夾（已去背），檔名用槍枝代號，例如 images/photos/ak47.jpg。
+   找不到圖片檔時，會自動換成像素槍預設圖，版面不會壞掉。 */
 function photo(gun) {
   const img = el("img");
   img.alt = gun.name;
   img.loading = "lazy";
   img.classList.add("is-loading");      // 載入前顯示骨架，載入完成後淡入
   img.addEventListener("load", function () { img.classList.remove("is-loading"); });
-  img.src = "images/" + gun.id + ".jpg";
-  img.addEventListener("error", function () {
-    if (img.src.endsWith(".jpg")) img.src = "images/" + gun.id + ".png";
-    else img.replaceWith(artPlaceholder(gun.type));
-  });
+  img.src = "images/photos/" + gun.id + ".jpg";
+  img.addEventListener("error", function () { img.replaceWith(artPlaceholder(gun.type)); });
   return img;
 }
 
 /* ---------- 點陣照片 ----------
    平常顯示圓點組成的點陣版，游標（或手指）移到哪裡，那一圈就變回真實照片。
-   點陣圖與裁掉白邊的照片是事先轉好的：images/dots/<代號>.png、images/c/<代號>.jpg。
-   任何一張缺檔，就退回一般照片，所以新增槍時只放 images/<代號>.jpg 也不會壞。 */
+   點陣圖與去背照片是事先轉好的：images/dots/<代號>.png、images/photos/<代號>.jpg。
+   點陣圖缺檔時，就退回一般照片。 */
 function dotPhoto(gun, big) {
   const wrap = el("div", "dm");
   const dots = el("img", "dots");
   dots.alt = ""; dots.setAttribute("aria-hidden", "true");
-  dots.src = "images/dots/" + gun.id + (big ? "" : "-s") + ".png";
+  dots.src = "images/dots/" + gun.id + ".png";
   if (!big) dots.loading = "lazy";
   const real = el("img", "real");
   real.alt = gun.name;
-  real.src = "images/c/" + gun.id + ".jpg";
+  real.src = "images/photos/" + gun.id + ".jpg";
   if (!big) real.loading = "lazy";
   function fallback() { if (wrap.parentNode) wrap.replaceWith(photo(gun)); }
   dots.addEventListener("error", fallback);
@@ -661,7 +658,7 @@ function stillPhoto(gun) {
   const wrap = el("div", "dm still");
   const real = el("img", "real");
   real.alt = gun.name;
-  real.src = "images/c/" + gun.id + ".jpg";
+  real.src = "images/photos/" + gun.id + ".jpg";
   real.addEventListener("error", function () { if (wrap.parentNode) wrap.replaceWith(photo(gun)); });
   wrap.appendChild(real);
   return wrap;
@@ -1821,7 +1818,7 @@ function makeCard(gun, plain) {
   const wrap = el("div", "card-wrap");
   const card = el("a", "card");
   card.href = "#/gun/" + gun.id;
-  card.appendChild(plain ? photo(gun) : dotPhoto(gun, false));
+  card.appendChild(plain ? stillPhoto(gun) : dotPhoto(gun, false));
   card.appendChild(el("p", "file-no", "FILE " + String(guns.indexOf(gun) + 1).padStart(2, "0") + " ▸ " + gun.type.toUpperCase()));
   card.appendChild(el("h3", "", gun.name));
   card.appendChild(el("p", "meta", gun.country + "，" + gun.year + " 年"));

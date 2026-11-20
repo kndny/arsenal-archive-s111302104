@@ -1637,3 +1637,7 @@ td:first-child { padding-left: 0.75rem; }
   .site-header nav a { padding: 0.35rem 0.15rem; }
   .site-search { min-width: 4.5rem; }
 }
+/* 照片改用去背版本（四周沒有留白），小縮圖改成完整顯示、不裁切 */
+.map-gun-card img { object-fit: contain; padding: 0.35rem; box-sizing: border-box; background: #fff; }
+/* 收藏的徽章出現時導覽列也維持一排 */
+@media (min-width: 901px) { .site-search { flex: 1 1 4rem; min-width: 4rem; } }
