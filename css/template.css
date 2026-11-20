@@ -1669,3 +1669,6 @@ td:first-child { padding-left: 0.75rem; }
   .range-stick { left: 0.6rem; bottom: 0.6rem; width: 96px; height: 96px; border-width: 2px; }
   .range-stick-knob { width: 42px; height: 42px; border-width: 2px; }
 }
+
+/* 術語提示框：由 JS 算出往左挪多少（--tx），不會超出畫面 */
+.term-hint::after { transform: translateX(var(--tx, 0px)); box-sizing: border-box; text-align: left; }
