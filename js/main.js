@@ -3894,7 +3894,8 @@ function renderRange(mode, startGun) {
 
   function feedback() {
     if (soundOn) playShot(weaponId);
-    if (canVibrate && vibrateOn) navigator.vibrate(w.vib);
+    // 很多手機的震動馬達在 20 毫秒以下幾乎感覺不到，所以至少震 25 毫秒，並把原本的長度加倍
+    if (canVibrate && vibrateOn) navigator.vibrate(Math.max(25, w.vib * 2));
     if (reduceMotion()) return;
     shakeX = (Math.random() - 0.5) * 2 * w.shake * 1.5;
     shakeY = (Math.random() - 0.5) * 2 * w.shake * 1.5;
